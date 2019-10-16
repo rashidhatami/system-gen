@@ -1,0 +1,34 @@
+### Intellij Patch ###
+# Comment Reason: https://github.com/joeblau/gitignore.io/issues/186#issuecomment-215987721
+
+# *.iml
+# modules.xml
+# .idea/misc.xml
+# *.ipr
+
+# Sonarlint plugin
+.idea/sonarlint
+
+# End of https://www.gitignore.io/api/intellij
+
+# Package Files #
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+target
+*.iml
+*.ipr
+*.iws
+.idea
+.classpath
+.project
+.settings
+.DS_Store
+*.bpmn/
+.idea/workspace.xml
+/.apt_generated/
+/.apt_generated_tests/
