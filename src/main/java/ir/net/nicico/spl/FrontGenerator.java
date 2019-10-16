@@ -3,7 +3,6 @@ package ir.net.nicico.spl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import ir.net.nicico.spl.types.DropDownType;
-import org.springframework.util.ResourceUtils;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -31,9 +30,9 @@ public class FrontGenerator {
 //        try {
             System.out.println("Working Directory = " +
                     System.getProperty("user.dir"));
-//            File file = ResourceUtils.getFile("src/main/resources/aef2ng.zip");
+//            File file = ResourceUtils.getFile("src/main/resources/nicico2ng.zip");
             File file = new File(
-                    FrontGenerator.class.getClassLoader().getResource("aef2ng.zip").getFile()
+                    FrontGenerator.class.getClassLoader().getResource("nicico2ng.zip").getFile()
             );
             String rootPath = targetPath;
             File filePath = new File(rootPath);
