@@ -2,10 +2,15 @@ package ir.net.nicico.spl;
 
 
 import com.google.common.base.CaseFormat;
+import com.google.common.collect.Sets;
+import ir.net.nicico.spl.types.EntityDefinition;
+import ir.net.nicico.spl.types.GlobalizedName;
+import ir.net.nicico.spl.types.SystemDefinition;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class NicicoGenerator {
 
@@ -61,34 +66,81 @@ public class NicicoGenerator {
                 entityLabels);
 
 
-
     }
 
-    public static void generateAll( String basePackage,
-                                    List<String> entityNameList,
-                                    String targetPath,
-                                    String projectName,
-                                    String projectDescription,
-                                    String artifcatId,
-                                    String groupId,
-                                    String dataSourceUrl,
-                                    String dataSourceUsername,
-                                    String dataSourcePassword,
-                                    String contextPath,
-                                    String portNumber,
-                                    String jwtKey,
-                                    String jwtExpiration,
-                                    boolean validationEnabled,
-                                    String frontProjectPath,
-                                    LinkedHashMap<String, String> farsiNames,
-                                    LinkedHashMap<String, LinkedHashMap<String, String>> farsiFields,
-                                    LinkedHashMap<String, String> entityLabels) throws IOException {
+    public void generateFromJson(SystemDefinition systemDefinition) {
+
+        List<GlobalizedName> entityNameList = systemDefinition.getBackendDefinition().getEntityDefinitionList().stream().map(EntityDefinition::getName).collect(Collectors.toList());
+        List<Map<String, String>> namesMap = entityNameList.stream().map(GlobalizedName::getNames).collect(Collectors.toList());
+        List<String> engNames = namesMap.stream().map(m -> m.get("en")).collect(Collectors.toList());
+        LinkedHashMap<String, String> farsiNames = new LinkedHashMap<>();
+        namesMap.forEach(m -> {
+            farsiNames.put(m.get("en"), m.get("fa"));
+        });
+
+        LinkedHashMap<String, LinkedHashMap<String, String>> farsiFields = new LinkedHashMap<>();
+
+        systemDefinition.getBackendDefinition().getEntityDefinitionList().forEach(e -> {
+            String entityEnName = e.getName().getNames().get("en");
+            farsiFields.put(entityEnName, new LinkedHashMap<>());
+            e.getEntityFieldDefinitionList().forEach(f -> {
+                farsiFields.get(entityEnName).put(f.getName().getNames().get("en"), f.getName().getNames().get("fa"));
+            });
+        });
+
+        LinkedHashMap<String, String> entityLabels = new LinkedHashMap<>();
+        systemDefinition.getBackendDefinition().getEntityDefinitionList().forEach(e -> {
+            String entityEnName = e.getName().getNames().get("en");
+            String entityFaName = e.getName().getNames().get("fa");
+            entityLabels.put(entityEnName, entityFaName);
+        });
+
+        NicicoGenerator.generateAll(systemDefinition.getBackendDefinition().getBasePackage(),
+                engNames,
+                systemDefinition.getBackendDefinition().getTargetPath(),
+                systemDefinition.getBackendDefinition().getMavenConfig().getProjectName(),
+                systemDefinition.getBackendDefinition().getMavenConfig().getProjectDescription(),
+                systemDefinition.getBackendDefinition().getMavenConfig().getMavenArtifactId(),
+                systemDefinition.getBackendDefinition().getMavenConfig().getMavenGroupId(),
+                systemDefinition.getBackendDefinition().getDatabaseConnection().getDatasourceUrl(),
+                systemDefinition.getBackendDefinition().getDatabaseConnection().getDatasourceUsername(),
+                systemDefinition.getBackendDefinition().getDatabaseConnection().getDatasourcePassword(),
+                systemDefinition.getBackendDefinition().getContextPath(),
+                systemDefinition.getBackendDefinition().getBackendPortNumber(),
+                systemDefinition.getBackendDefinition().getSecurityConfig().getJwtKey(),
+                systemDefinition.getBackendDefinition().getSecurityConfig().getTokenExpiration(),
+                systemDefinition.getBackendDefinition().getEnableServerSideValidation(),
+                systemDefinition.getFrontendDefinition().getProjectName(),
+                farsiNames,
+                farsiFields,
+                entityLabels);
+    }
+
+    public static void generateAll(String basePackage,
+                                   List<String> entityNameList,
+                                   String targetPath,
+                                   String projectName,
+                                   String projectDescription,
+                                   String artifcatId,
+                                   String groupId,
+                                   String dataSourceUrl,
+                                   String dataSourceUsername,
+                                   String dataSourcePassword,
+                                   String contextPath,
+                                   String portNumber,
+                                   String jwtKey,
+                                   String jwtExpiration,
+                                   boolean validationEnabled,
+                                   String frontProjectPath,
+                                   LinkedHashMap<String, String> farsiNames,
+                                   LinkedHashMap<String, LinkedHashMap<String, String>> farsiFields,
+                                   LinkedHashMap<String, String> entityLabels) throws IOException {
 
 
         generateStructureOfProject(projectName, basePackage, targetPath);
         String sourcePackageTarget = generateSourceTargetPackagePath(targetPath, basePackage, projectName);
 
-        File modelPath = new File( sourcePackageTarget + "/model");
+        File modelPath = new File(sourcePackageTarget + "/model");
         File daoPath = new File(sourcePackageTarget + "/dao");
         File servicePath = new File(sourcePackageTarget + "/service");
         File dtoPath = new File(sourcePackageTarget + "/dto");
@@ -110,62 +162,62 @@ public class NicicoGenerator {
         resourcePath.mkdirs();
 
 
-        if(checkGeneration("generate.pom")) {
+        if (checkGeneration("generate.pom")) {
             generatePOMFile(rootPath.getPath(), projectName, projectDescription, artifcatId, groupId);
         }
 
-        if(checkGeneration("generate.runner")) {
+        if (checkGeneration("generate.runner")) {
             generateRunnerClass(sourcePackageTarget, basePackage, projectName);
         }
 
-        if(checkGeneration("generate.properties")) {
+        if (checkGeneration("generate.properties")) {
             generateApplicationDotPropertiesFile(resourcePath.getPath(), dataSourceUrl, dataSourceUsername, dataSourcePassword, contextPath, portNumber);
         }
 
 
-        if(checkGeneration("generate.config")) {
+        if (checkGeneration("generate.config")) {
             generateConfigPropertiesFile(resourcePath.getPath(), jwtKey, jwtExpiration);
         }
 
-        if(checkGeneration("generate.errorcodes")) {
+        if (checkGeneration("generate.errorcodes")) {
             generateErrorCodeProperties(resourcePath.getPath());
         }
 
-        if(checkGeneration("generate.security.config")) {
+        if (checkGeneration("generate.security.config")) {
             generateSecurityConfig(basePackage, securityPath.getPath());
         }
 
-        if(checkGeneration("generate.security.roles")) {
+        if (checkGeneration("generate.security.roles")) {
             generateAccessRoles(basePackage, securityPath.getPath());
         }
 
         entityNameList.stream().forEach(entityName -> {
             LinkedHashMap<String, String> fields = findFieldsForEntity(entityName);
             try {
-                if(checkGeneration("generate.entity")) {
+                if (checkGeneration("generate.entity")) {
                     generateEntity(basePackage, entityName, fields, modelPath.getPath());
                 }
-                if(checkGeneration("generate.dto")) {
+                if (checkGeneration("generate.dto")) {
                     generateDto(basePackage, entityName, fields, dtoPath.getPath(), validationEnabled);
                 }
-                if(checkGeneration("generate.dao")) {
+                if (checkGeneration("generate.dao")) {
                     generateDao(basePackage, entityName, daoPath.getPath());
                 }
-                if(checkGeneration("generate.service")) {
+                if (checkGeneration("generate.service")) {
                     generateService(basePackage, entityName, servicePath.getPath());
                 }
-                if(checkGeneration("generate.general.service")) {
+                if (checkGeneration("generate.general.service")) {
                     //fill service package
                     generateGeneralServiceInterface(servicePath.getPath(), basePackage);
                     generateGeneralServiceImplClass(servicePath.getPath(), basePackage);
                     generatePagedResultClass(servicePath.getPath(), basePackage);
                 }
-                if(checkGeneration("generate.rest")) {
+                if (checkGeneration("generate.rest")) {
                     generateRestService(basePackage, entityName, fields, restPath.getPath());
                 }
 
-                FrontGenerator.generateEntityComponent(entityNameList, frontProjectPath , entityName, entityName, fields);
-                FrontGenerator.generateEntityService(frontProjectPath , entityName);
+                FrontGenerator.generateEntityComponent(entityNameList, frontProjectPath, entityName, entityName, fields);
+                FrontGenerator.generateEntityService(frontProjectPath, entityName);
                 FrontGenerator.generateEntityHtmlView(frontProjectPath, entityName, farsiNames.get(entityName), fields, farsiFields.get(entityName), entityLabels);
 
 
@@ -181,9 +233,8 @@ public class NicicoGenerator {
         FrontGenerator.generateProductionEnvironment(frontProjectPath, contextPath);
 
 
-
         //fill common package
-        if(checkGeneration("generate.common")){
+        if (checkGeneration("generate.common")) {
             generateBusinessExceptionCodeClass(commonPath.getPath(), basePackage);
             generateConfigReaderUtilClass(commonPath.getPath(), basePackage);
             generateAEFExceptionHandler(commonPath.getPath(), basePackage);
@@ -196,7 +247,7 @@ public class NicicoGenerator {
         }
 
         //fill jwt package
-        if(checkGeneration("generate.jwt")) {
+        if (checkGeneration("generate.jwt")) {
             generateCustomClaims(jwtPath.getPath(), basePackage);
             generateJwtAuthenticationEntryClass(jwtPath.getPath(), basePackage);
             generateJwtAuthenticationFilterClass(jwtPath.getPath(), basePackage);
@@ -208,10 +259,10 @@ public class NicicoGenerator {
             generateTokenRepository(jwtPath.getPath(), basePackage);
         }
 
-        if(checkGeneration("generate.security.service")) {
+        if (checkGeneration("generate.security.service")) {
             generateSecurityServiceClass(servicePath.getPath(), basePackage);
         }
-        if(checkGeneration("generate.login.rest")) {
+        if (checkGeneration("generate.login.rest")) {
             generateLoginRestService(restPath.getPath(), basePackage);
         }
 
@@ -406,7 +457,7 @@ public class NicicoGenerator {
     private static String generateAccessRoles(String basePackage, String path) throws FileNotFoundException {
 
         List<String> entities = findEntities();
-        if(entities == null || entities.isEmpty())
+        if (entities == null || entities.isEmpty())
             return null;
 
         String content = "package #package.security;\n" +
@@ -419,26 +470,25 @@ public class NicicoGenerator {
                 "public class AccessRoles {\n" +
                 "\n";
 
-                for (String e : entities) {
-                    content += "    public static final String ROLE_FIND_" + camelToSnake(e).toUpperCase() + " = \"ROLE_FIND_" + camelToSnake(e).toUpperCase() + "\";\n";
-                    content += "    public static final String ROLE_SEARCH_" + camelToSnake(e).toUpperCase() + " = \"ROLE_SEARCH_" + camelToSnake(e).toUpperCase() + "\";\n";
-                    content += "    public static final String ROLE_SAVE_" + camelToSnake(e).toUpperCase() + " = \"ROLE_SAVE_" + camelToSnake(e).toUpperCase() + "\";\n";
-                    content += "    public static final String ROLE_REMOVE_" + camelToSnake(e).toUpperCase() + " = \"ROLE_REMOVE_" + camelToSnake(e).toUpperCase() + "\";\n";
-                }
+        for (String e : entities) {
+            content += "    public static final String ROLE_FIND_" + camelToSnake(e).toUpperCase() + " = \"ROLE_FIND_" + camelToSnake(e).toUpperCase() + "\";\n";
+            content += "    public static final String ROLE_SEARCH_" + camelToSnake(e).toUpperCase() + " = \"ROLE_SEARCH_" + camelToSnake(e).toUpperCase() + "\";\n";
+            content += "    public static final String ROLE_SAVE_" + camelToSnake(e).toUpperCase() + " = \"ROLE_SAVE_" + camelToSnake(e).toUpperCase() + "\";\n";
+            content += "    public static final String ROLE_REMOVE_" + camelToSnake(e).toUpperCase() + " = \"ROLE_REMOVE_" + camelToSnake(e).toUpperCase() + "\";\n";
+        }
 
-                content += "\n\n";
-                content += "    public static List<String> getAllRoles() {\n";
-                content += "        List<String> roles = new ArrayList<>();\n";
-                for (String e : entities) {
-                    content += "        roles.add(ROLE_FIND_" + camelToSnake(e).toUpperCase() + ");\n";
-                    content += "        roles.add(ROLE_SEARCH_" + camelToSnake(e).toUpperCase() + ");\n";
-                    content += "        roles.add(ROLE_SAVE_" + camelToSnake(e).toUpperCase() + ");\n";
-                    content += "        roles.add(ROLE_REMOVE_" + camelToSnake(e).toUpperCase() + ");\n";
-                }
-                content += "    return roles;";
-                content += "    }\n";
-                content += "}\n";
-
+        content += "\n\n";
+        content += "    public static List<String> getAllRoles() {\n";
+        content += "        List<String> roles = new ArrayList<>();\n";
+        for (String e : entities) {
+            content += "        roles.add(ROLE_FIND_" + camelToSnake(e).toUpperCase() + ");\n";
+            content += "        roles.add(ROLE_SEARCH_" + camelToSnake(e).toUpperCase() + ");\n";
+            content += "        roles.add(ROLE_SAVE_" + camelToSnake(e).toUpperCase() + ");\n";
+            content += "        roles.add(ROLE_REMOVE_" + camelToSnake(e).toUpperCase() + ");\n";
+        }
+        content += "    return roles;";
+        content += "    }\n";
+        content += "}\n";
 
 
         String result = content.replaceAll("#package", basePackage);
@@ -458,7 +508,7 @@ public class NicicoGenerator {
 
         try {
             String value = InitializrReaderUtility.getResourceProperity(key);
-            if(value.equalsIgnoreCase("true"))
+            if (value.equalsIgnoreCase("true"))
                 return true;
 
         } catch (Exception e) {
@@ -474,7 +524,7 @@ public class NicicoGenerator {
         LinkedHashMap<String, String> fields = new LinkedHashMap<>();
 
         keyList.stream().forEach(k -> {
-            if(k.contains(entityName + ".field.type.")) {
+            if (k.contains(entityName + ".field.type.")) {
                 String[] parts = k.split("\\.");
                 String type = InitializrReaderUtility.getResourceProperity(k);
                 fields.put(parts[3], type);
@@ -490,7 +540,7 @@ public class NicicoGenerator {
         List<String> entities = new ArrayList<>();
 
         keyList.stream().forEach(k -> {
-            if(k.contains("entity.name.")) {
+            if (k.contains("entity.name.")) {
                 String[] parts = k.split("\\.");
                 String type = InitializrReaderUtility.getResourceProperity(k);
                 entities.add(parts[2]);
@@ -506,7 +556,7 @@ public class NicicoGenerator {
         LinkedHashMap<String, String> entities = new LinkedHashMap<>();
 
         keyList.stream().forEach(k -> {
-            if(k.contains("entity.farsi.name.")) {
+            if (k.contains("entity.farsi.name.")) {
                 String[] parts = k.split("\\.");
                 String farsi = InitializrReaderUtility.getResourceProperity(k);
                 entities.put(parts[3], farsi);
@@ -522,7 +572,7 @@ public class NicicoGenerator {
         LinkedHashMap<String, String> entities = new LinkedHashMap<>();
 
         keyList.stream().forEach(k -> {
-            if(k.contains("entity.label.")) {
+            if (k.contains("entity.label.")) {
                 String[] parts = k.split("\\.");
                 String label = InitializrReaderUtility.getResourceProperity(k);
                 entities.put(parts[2], label);
@@ -543,7 +593,7 @@ public class NicicoGenerator {
             LinkedHashMap<String, String> fields = new LinkedHashMap<>();
 
             keyList.stream().forEach(k -> {
-                if(k.contains(e + ".field.farsi.")) {
+                if (k.contains(e + ".field.farsi.")) {
                     String[] parts = k.split("\\.");
                     String farsi = InitializrReaderUtility.getResourceProperity(k);
                     fields.put(parts[3], farsi);
@@ -595,7 +645,7 @@ public class NicicoGenerator {
 
     }
 
-    private static String generatePOMFile(String path, String projectName, String projectDescription, String artifactId, String groupId ) throws FileNotFoundException {
+    private static String generatePOMFile(String path, String projectName, String projectDescription, String artifactId, String groupId) throws FileNotFoundException {
 
         String content = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
                 "<project xmlns=\"http://maven.apache.org/POM/4.0.0\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n" +
@@ -754,45 +804,42 @@ public class NicicoGenerator {
                 .append("public class #Entity implements DomainEntity {\n")
                 .append("\n");
 
-        for (Map.Entry<String, String> entry : fields.entrySet())
-        {
+        for (Map.Entry<String, String> entry : fields.entrySet()) {
             content.append("\n");
-            if(entry.getKey().equalsIgnoreCase("id")) {
+            if (entry.getKey().equalsIgnoreCase("id")) {
                 content.append("    @Id\n")
                         .append("    @Column(name = \"id\")\n")
                         .append("    @GeneratedValue(strategy = GenerationType.IDENTITY)\n")
                         .append("    private ").append(entry.getValue()).append(" ").append(entry.getKey()).append(";")
                         .append("\n");
-            }
-
-            else {
-                if(entry.getValue().toLowerCase().contains("DropDown".toLowerCase())) {
+            } else {
+                if (entry.getValue().toLowerCase().contains("DropDown".toLowerCase())) {
                     content.append("    @Column(name = \"").append(camelToSnake(entry.getKey())).append("\"");
-                    if(!findFieldNullability(entityName, entry.getKey())) {
-                        content.append(", nullable = " + false );
+                    if (!findFieldNullability(entityName, entry.getKey())) {
+                        content.append(", nullable = " + false);
                     }
                     String length = findFieldLength(entityName, entry.getKey());
-                    if(length != null) {
+                    if (length != null) {
                         content.append(", length = ").append(length);
                     }
                     content.append(")\n");
                     content.append("    private Long").append(" ").append(entry.getKey()).append(";\n");
                 } else {
-                    if(getBaseTypes().contains(entry.getValue())) {
+                    if (getBaseTypes().contains(entry.getValue())) {
                         content.append("    @Column(name = \"").append(camelToSnake(entry.getKey())).append("\"");
-                        if(!findFieldNullability(entityName, entry.getKey())) {
-                            content.append(", nullable = " + false );
+                        if (!findFieldNullability(entityName, entry.getKey())) {
+                            content.append(", nullable = " + false);
                         }
                         //no need to write true, its default value
 //                    {
 //                        content.append(", nullable = " + true );
 //                    }
                         String length = findFieldLength(entityName, entry.getKey());
-                        if(length != null) {
+                        if (length != null) {
                             content.append(", length = ").append(length);
                         }
                         content.append(")\n");
-                        if(entry.getValue().equals("Date")) {
+                        if (entry.getValue().equals("Date")) {
                             content.append("    @Temporal(TemporalType.TIMESTAMP)\n");
                         }
                     } else {
@@ -807,12 +854,11 @@ public class NicicoGenerator {
 
         content.append("\n\n");
 
-        for (Map.Entry<String, String> entry : fields.entrySet())
-        {
+        for (Map.Entry<String, String> entry : fields.entrySet()) {
             String firstCharFieldName = entry.getKey().substring(0, 1);
             String upperCaseCharFieldName = entry.getKey().replaceFirst(firstCharFieldName, firstCharFieldName.toUpperCase());
 
-            if(entry.getValue().toLowerCase().contains("DropDown".toLowerCase())) {
+            if (entry.getValue().toLowerCase().contains("DropDown".toLowerCase())) {
                 content.append("\n")
                         .append("    public Long get").append(upperCaseCharFieldName).append("() {\n")
                         .append("        return ").append(entry.getKey()).append(";\n")
@@ -874,7 +920,7 @@ public class NicicoGenerator {
     private static boolean findFieldNullability(String entityName, String fieldName) {
         try {
             String s = InitializrReaderUtility.getResourceProperity(entityName + ".field.nullable." + fieldName);
-            if(s.equalsIgnoreCase("false"))
+            if (s.equalsIgnoreCase("false"))
                 return false;
             return true;
         } catch (Exception e) {
@@ -885,11 +931,11 @@ public class NicicoGenerator {
     private static String findFieldLength(String entityName, String fieldName) {
         try {
             String s = InitializrReaderUtility.getResourceProperity(entityName + ".field.length." + fieldName);
-            if(Integer.parseInt(s) > 0){
+            if (Integer.parseInt(s) > 0) {
                 return s;
             }
             String type = InitializrReaderUtility.getResourceProperity(entityName + ".field.type." + fieldName);
-            if(type.equalsIgnoreCase("Integer")
+            if (type.equalsIgnoreCase("Integer")
                     || type.equalsIgnoreCase("int")
                     || type.equalsIgnoreCase("double")
                     || type.equalsIgnoreCase("long")
@@ -897,7 +943,7 @@ public class NicicoGenerator {
                     || type.equalsIgnoreCase("byte")) {
                 return "10";
             }
-            if(type.equalsIgnoreCase("String")
+            if (type.equalsIgnoreCase("String")
                     || type.equalsIgnoreCase("char")) {
                 return "100";
             }
@@ -1034,7 +1080,7 @@ public class NicicoGenerator {
                 .replaceAll("#entity", entityInstanceName);
 
         System.out.printf(result);
-        try (PrintStream out = new PrintStream(new FileOutputStream( targetPath + "/" + entityName + "Dto.java"))) {
+        try (PrintStream out = new PrintStream(new FileOutputStream(targetPath + "/" + entityName + "Dto.java"))) {
             out.print(result);
         }
         return result;
@@ -1067,12 +1113,11 @@ public class NicicoGenerator {
 
         content.append("\n\n");
 
-        for (Map.Entry<String, String> entry : fields.entrySet())
-        {
-            if(getBaseTypes().contains(entry.getValue())) {
-                if(validationEnabled) {
-                    if(!findFieldNullability(entityName, entry.getKey())) {
-                        if(entry.getValue().trim().equalsIgnoreCase("String")) {
+        for (Map.Entry<String, String> entry : fields.entrySet()) {
+            if (getBaseTypes().contains(entry.getValue())) {
+                if (validationEnabled) {
+                    if (!findFieldNullability(entityName, entry.getKey())) {
+                        if (entry.getValue().trim().equalsIgnoreCase("String")) {
                             content.append("\n    @NotEmpty(message = \"{").append(entry.getKey()).append(".should.not.be.Empty}\")");
                         } else {
                             content.append("\n    @NotNull(message = \"{").append(entry.getKey()).append(".should.not.be.null}\")");
@@ -1080,22 +1125,21 @@ public class NicicoGenerator {
                     }
                 }
                 content.append("\n    private ").append(entry.getValue()).append(" ").append(entry.getKey()).append(";");
-            } else if(entry.getValue().toLowerCase().contains("DropDown".toLowerCase())) {
+            } else if (entry.getValue().toLowerCase().contains("DropDown".toLowerCase())) {
                 content.append("\n    private Long").append(" ").append(entry.getKey()).append(";");
-            } else{
+            } else {
                 content.append("\n    private ").append(entry.getValue() + "Dto").append(" ").append(entry.getKey()).append(";");
             }
         }
 
         content.append("\n \n");
 
-        for (Map.Entry<String, String> entry : fields.entrySet())
-        {
+        for (Map.Entry<String, String> entry : fields.entrySet()) {
 
             String firstCharFieldName = entry.getKey().substring(0, 1);
             String upperCaseCharFieldName = entry.getKey().replaceFirst(firstCharFieldName, firstCharFieldName.toUpperCase());
 
-            if(entry.getValue().toLowerCase().contains("DropDown".toLowerCase())) {
+            if (entry.getValue().toLowerCase().contains("DropDown".toLowerCase())) {
                 content.append("\n")
                         .append("    public Long get").append(upperCaseCharFieldName).append("() {\n")
                         .append("        return ").append(entry.getKey()).append(";\n")
@@ -1104,7 +1148,7 @@ public class NicicoGenerator {
                         .append("    public void set").append(upperCaseCharFieldName).append("(").append("Long ").append(entry.getKey()).append(") {\n")
                         .append("       this.").append(entry.getKey()).append(" = ").append(entry.getKey()).append(";\n")
                         .append("    }\n\n");
-            } else if(getBaseTypes().contains(entry.getValue())) {
+            } else if (getBaseTypes().contains(entry.getValue())) {
                 content.append("\n    public " + entry.getValue() + " get" + upperCaseCharFieldName + "() {\n" +
                         "        return " + entry.getKey() + ";\n" +
                         "    }\n" +
@@ -1150,17 +1194,14 @@ public class NicicoGenerator {
                 "        #EntityDto dto = new #EntityDto();");
 
 
-        for (Map.Entry<String, String> entry : fields.entrySet())
-        {
+        for (Map.Entry<String, String> entry : fields.entrySet()) {
             String firstCharFieldName = entry.getKey().substring(0, 1);
             String upperCaseCharFieldName = entry.getKey().replaceFirst(firstCharFieldName, firstCharFieldName.toUpperCase());
-            if(entry.getValue().toLowerCase().contains("DropDown".toLowerCase())) {
+            if (entry.getValue().toLowerCase().contains("DropDown".toLowerCase())) {
                 content.append("\n        dto.set").append(upperCaseCharFieldName).append("(").append(entityInstanceName).append(".get").append(upperCaseCharFieldName).append("()").append(");");
-            }
-            else if(getBaseTypes().contains(entry.getValue())) {
+            } else if (getBaseTypes().contains(entry.getValue())) {
                 content.append("\n        dto.set").append(upperCaseCharFieldName).append("(").append(entityInstanceName).append(".get").append(upperCaseCharFieldName).append("()").append(");");
-            }
-            else {
+            } else {
                 content.append("\n        dto.set").append(upperCaseCharFieldName).append("(")
                         .append(entry.getValue()).append("Dto.toDto(")
                         .append(entityInstanceName).append(".get").append(upperCaseCharFieldName).append("()")
@@ -1184,17 +1225,14 @@ public class NicicoGenerator {
                 "        #Entity #entity = new #Entity();");
 
 
-        for (Map.Entry<String, String> entry : fields.entrySet())
-        {
+        for (Map.Entry<String, String> entry : fields.entrySet()) {
             String firstCharFieldName = entry.getKey().substring(0, 1);
             String upperCaseCharFieldName = entry.getKey().replaceFirst(firstCharFieldName, firstCharFieldName.toUpperCase());
-            if(getBaseTypes().contains(entry.getValue())) {
+            if (getBaseTypes().contains(entry.getValue())) {
                 content.append("\n        #entity.set").append(upperCaseCharFieldName).append("(").append("dto").append(".get").append(upperCaseCharFieldName).append("()").append(");");
-            }
-            else if(entry.getValue().toLowerCase().contains("DropDown".toLowerCase())) {
+            } else if (entry.getValue().toLowerCase().contains("DropDown".toLowerCase())) {
                 content.append("\n        #entity.set").append(upperCaseCharFieldName).append("(").append("dto").append(".get").append(upperCaseCharFieldName).append("()").append(");");
-            }
-            else {
+            } else {
                 content.append("\n        #entity.set").append(upperCaseCharFieldName).append("(")
                         .append(entry.getValue()).append("Dto.toEntity(")
                         .append("dto").append(".get").append(upperCaseCharFieldName).append("()")
@@ -1270,13 +1308,13 @@ public class NicicoGenerator {
                 "import java.util.Date;\n" +
                 "\n";
 
-                if(checkGeneration("generate.security.roles")) {
-                    content += "import org.springframework.security.access.annotation.Secured;\n";
-                    content += "import #package.security.AccessRoles;\n";
+        if (checkGeneration("generate.security.roles")) {
+            content += "import org.springframework.security.access.annotation.Secured;\n";
+            content += "import #package.security.AccessRoles;\n";
 
-                }
+        }
 
-                content += "import java.text.ParseException;\n" +
+        content += "import java.text.ParseException;\n" +
                 "import java.util.Collections;\n" +
                 "import java.util.List;\n" +
                 "\n" +
@@ -1300,41 +1338,40 @@ public class NicicoGenerator {
 
         StringBuilder content = new StringBuilder(
                 "\n\n");
-                if(checkGeneration("generate.security.roles")) {
-                    content.append("    @Secured(AccessRoles.ROLE_FIND_").append(camelToSnake(entity).toUpperCase()).append(")\n");
-                    }
-                content.append("    @GetMapping(\"/{id}\")\n" +
+        if (checkGeneration("generate.security.roles")) {
+            content.append("    @Secured(AccessRoles.ROLE_FIND_").append(camelToSnake(entity).toUpperCase()).append(")\n");
+        }
+        content.append("    @GetMapping(\"/{id}\")\n" +
                 "    public #EntityDto findById(@PathVariable(name = \"id\")Long id) {\n" +
                 "        return #entityService.findByPrimaryKey(id);\n" +
                 "    }\n" +
                 "\n");
-                if(checkGeneration("generate.security.roles")) {
-                    content.append("    @Secured(AccessRoles.ROLE_SEARCH_").append(camelToSnake(entity).toUpperCase()).append(")\n");
-                }
-                content.append("    @GetMapping(\"/search\")\n" +
+        if (checkGeneration("generate.security.roles")) {
+            content.append("    @Secured(AccessRoles.ROLE_SEARCH_").append(camelToSnake(entity).toUpperCase()).append(")\n");
+        }
+        content.append("    @GetMapping(\"/search\")\n" +
                 "    public PagedResult search(");
 
-                for (Map.Entry<String, String> entry : fields.entrySet())
-                {
-                    if(getBaseTypes().contains(entry.getValue())) {
-                        content.append("\n                                      @RequestParam(value = \"").append(entry.getKey()).append("\", required = false) ");
-                        content.append(entry.getValue()).append(" ").append(entry.getKey()).append(",");
-                    }
-                }
+        for (Map.Entry<String, String> entry : fields.entrySet()) {
+            if (getBaseTypes().contains(entry.getValue())) {
+                content.append("\n                                      @RequestParam(value = \"").append(entry.getKey()).append("\", required = false) ");
+                content.append(entry.getValue()).append(" ").append(entry.getKey()).append(",");
+            }
+        }
 
-                content.append("\n                                      @RequestParam(value = \"").append("firstIndex").append("\", required = false) ");
-                content.append("Integer").append(" ").append("firstIndex").append(",");
-                content.append("\n                                      @RequestParam(value = \"").append("pageSize").append("\", required = false) ");
-                content.append("Integer").append(" ").append("pageSize").append(",");
-                content.append("\n                                      @RequestParam(value = \"").append("sortField").append("\", required = false) ");
-                content.append("String").append(" ").append("sortField").append(",");
-                content.append("\n                                      @RequestParam(value = \"").append("sortOrder").append("\", required = false) ");
-                content.append("String").append(" ").append("sortOrder").append(",");
+        content.append("\n                                      @RequestParam(value = \"").append("firstIndex").append("\", required = false) ");
+        content.append("Integer").append(" ").append("firstIndex").append(",");
+        content.append("\n                                      @RequestParam(value = \"").append("pageSize").append("\", required = false) ");
+        content.append("Integer").append(" ").append("pageSize").append(",");
+        content.append("\n                                      @RequestParam(value = \"").append("sortField").append("\", required = false) ");
+        content.append("String").append(" ").append("sortField").append(",");
+        content.append("\n                                      @RequestParam(value = \"").append("sortOrder").append("\", required = false) ");
+        content.append("String").append(" ").append("sortOrder").append(",");
 
 
-                content = removeLastChar(content);
-                content.append(") {\n\n");
-                content.append("            SortObject sortObject = SortUtil.generateSortObject(sortField, sortOrder);\n" +
+        content = removeLastChar(content);
+        content.append(") {\n\n");
+        content.append("            SortObject sortObject = SortUtil.generateSortObject(sortField, sortOrder);\n" +
                 "            List<SortObject> sortObjectList = null;\n" +
                 "            if(sortObject != null)\n" +
                 "               sortObjectList = Collections.singletonList(sortObject);\n" +
@@ -1345,17 +1382,16 @@ public class NicicoGenerator {
                 "               pageSize = Integer.MAX_VALUE;\n");
 
 
-                content.append("            #EntityDto #entity = new #EntityDto();\n");
-                for (Map.Entry<String, String> entry : fields.entrySet())
-                {
-                    if(getBaseTypes().contains(entry.getValue())) {
-                        String firstCharFieldName = entry.getKey().substring(0, 1);
-                        String upperCaseCharFieldName = entry.getKey().replaceFirst(firstCharFieldName, firstCharFieldName.toUpperCase());
-                        content.append("            #entity.set" + upperCaseCharFieldName + "(" + entry.getKey() + "); \n");
-                    }
-                }
+        content.append("            #EntityDto #entity = new #EntityDto();\n");
+        for (Map.Entry<String, String> entry : fields.entrySet()) {
+            if (getBaseTypes().contains(entry.getValue())) {
+                String firstCharFieldName = entry.getKey().substring(0, 1);
+                String upperCaseCharFieldName = entry.getKey().replaceFirst(firstCharFieldName, firstCharFieldName.toUpperCase());
+                content.append("            #entity.set" + upperCaseCharFieldName + "(" + entry.getKey() + "); \n");
+            }
+        }
 
-                content.append("\n            return #entityService.findPagedByExample(#entity,\n" +
+        content.append("\n            return #entityService.findPagedByExample(#entity,\n" +
                 "                   sortObjectList,\n" +
                 "                   firstIndex,\n" +
                 "                   pageSize,\n" +
@@ -1363,24 +1399,24 @@ public class NicicoGenerator {
                 "                   null,\n" +
                 "                   null\n" +
                 "                   );\n");
-                content.append("    }\n\n");
-                return content.toString();
+        content.append("    }\n\n");
+        return content.toString();
     }
 
     private static String generateRestPostAndRemove(String entity) {
         StringBuilder content = new StringBuilder("\n");
-                if(checkGeneration("generate.security.roles")) {
-                    content.append("    @Secured(AccessRoles.ROLE_SAVE_").append(camelToSnake(entity).toUpperCase()).append(")\n");
-                }
-                content.append("    @PostMapping(path = \"/save\")\n" +
+        if (checkGeneration("generate.security.roles")) {
+            content.append("    @Secured(AccessRoles.ROLE_SAVE_").append(camelToSnake(entity).toUpperCase()).append(")\n");
+        }
+        content.append("    @PostMapping(path = \"/save\")\n" +
                 "    public #EntityDto save(@RequestBody #EntityDto #entity) {\n" +
                 "        return #entityService.save(#entity);\n" +
                 "    }\n" +
                 "\n");
-                if(checkGeneration("generate.security.roles")) {
-                    content.append("\n    @Secured(AccessRoles.ROLE_REMOVE_").append(camelToSnake(entity).toUpperCase()).append(")\n");
-                }
-                content.append("    @DeleteMapping(path = \"/delete/{id}\")\n" +
+        if (checkGeneration("generate.security.roles")) {
+            content.append("\n    @Secured(AccessRoles.ROLE_REMOVE_").append(camelToSnake(entity).toUpperCase()).append(")\n");
+        }
+        content.append("    @DeleteMapping(path = \"/delete/{id}\")\n" +
                 "    public void remove(@PathVariable(name = \"id\")Long id) {\n" +
                 "        #entityService.remove(id);\n" +
                 "    }");
@@ -2315,75 +2351,75 @@ public class NicicoGenerator {
     private static String generateSecurityWrapperClass(String path, String basePackage) throws FileNotFoundException {
         String content =
                 "package #package.jwt;\n" +
-                "\n" +
-                "import java.util.List;\n" +
-                "\n" +
-                "/**\n" +
-                " *\n" +
-                " * @author Generated By Nicico System Generator :) :D\n" +
-                " */\n" +
-                "public class SecurityWrapper {\n" +
-                "    \n" +
-                "    private String username;\n" +
-                "    private List<String> permissions;\n" +
-                "    private List<String> roles;\n" +
-                "    private String freshToken;\n" +
-                "    private boolean isSecure;\n" +
-                "\n" +
-                "    public SecurityWrapper() {\n" +
-                "\n" +
-                "    }\n" +
-                "\n" +
-                "    public SecurityWrapper(String username, List<String> permissions, List<String> roles, String freshToken, boolean isSecure){\n" +
-                "\n" +
-                "        this.username = username;\n" +
-                "        this.permissions = permissions;\n" +
-                "        this.roles = roles;\n" +
-                "        this.freshToken = freshToken;\n" +
-                "        this.isSecure = isSecure;\n" +
-                "    }\n" +
-                "\n" +
-                "    public String getUsername() {\n" +
-                "        return username;\n" +
-                "    }\n" +
-                "\n" +
-                "    public void setUsername(String username) {\n" +
-                "        this.username = username;\n" +
-                "    }   \n" +
-                "\n" +
-                "    public List<String> getPermissions() {\n" +
-                "        return permissions;\n" +
-                "    }\n" +
-                "\n" +
-                "    public void setPermissions(List<String> permissions) {\n" +
-                "        this.permissions = permissions;\n" +
-                "    }\n" +
-                "\n" +
-                "    public List<String> getRoles() {\n" +
-                "        return roles;\n" +
-                "    }\n" +
-                "\n" +
-                "    public void setRoles(List<String> roles) {\n" +
-                "        this.roles = roles;\n" +
-                "    }\n" +
-                "\n" +
-                "    public String getFreshToken() {\n" +
-                "        return freshToken;\n" +
-                "    }\n" +
-                "\n" +
-                "    public void setFreshToken(String freshToken) {\n" +
-                "        this.freshToken = freshToken;\n" +
-                "    }\n" +
-                "\n" +
-                "    public boolean isSecure() {\n" +
-                "        return isSecure;\n" +
-                "    }\n" +
-                "\n" +
-                "    public void setSecure(boolean secure) {\n" +
-                "        isSecure = secure;\n" +
-                "    }\n" +
-                "\n" +
-                "}\n";
+                        "\n" +
+                        "import java.util.List;\n" +
+                        "\n" +
+                        "/**\n" +
+                        " *\n" +
+                        " * @author Generated By Nicico System Generator :) :D\n" +
+                        " */\n" +
+                        "public class SecurityWrapper {\n" +
+                        "    \n" +
+                        "    private String username;\n" +
+                        "    private List<String> permissions;\n" +
+                        "    private List<String> roles;\n" +
+                        "    private String freshToken;\n" +
+                        "    private boolean isSecure;\n" +
+                        "\n" +
+                        "    public SecurityWrapper() {\n" +
+                        "\n" +
+                        "    }\n" +
+                        "\n" +
+                        "    public SecurityWrapper(String username, List<String> permissions, List<String> roles, String freshToken, boolean isSecure){\n" +
+                        "\n" +
+                        "        this.username = username;\n" +
+                        "        this.permissions = permissions;\n" +
+                        "        this.roles = roles;\n" +
+                        "        this.freshToken = freshToken;\n" +
+                        "        this.isSecure = isSecure;\n" +
+                        "    }\n" +
+                        "\n" +
+                        "    public String getUsername() {\n" +
+                        "        return username;\n" +
+                        "    }\n" +
+                        "\n" +
+                        "    public void setUsername(String username) {\n" +
+                        "        this.username = username;\n" +
+                        "    }   \n" +
+                        "\n" +
+                        "    public List<String> getPermissions() {\n" +
+                        "        return permissions;\n" +
+                        "    }\n" +
+                        "\n" +
+                        "    public void setPermissions(List<String> permissions) {\n" +
+                        "        this.permissions = permissions;\n" +
+                        "    }\n" +
+                        "\n" +
+                        "    public List<String> getRoles() {\n" +
+                        "        return roles;\n" +
+                        "    }\n" +
+                        "\n" +
+                        "    public void setRoles(List<String> roles) {\n" +
+                        "        this.roles = roles;\n" +
+                        "    }\n" +
+                        "\n" +
+                        "    public String getFreshToken() {\n" +
+                        "        return freshToken;\n" +
+                        "    }\n" +
+                        "\n" +
+                        "    public void setFreshToken(String freshToken) {\n" +
+                        "        this.freshToken = freshToken;\n" +
+                        "    }\n" +
+                        "\n" +
+                        "    public boolean isSecure() {\n" +
+                        "        return isSecure;\n" +
+                        "    }\n" +
+                        "\n" +
+                        "    public void setSecure(boolean secure) {\n" +
+                        "        isSecure = secure;\n" +
+                        "    }\n" +
+                        "\n" +
+                        "}\n";
 
         String result = content.replaceAll("#package", basePackage);
 
@@ -2893,8 +2929,7 @@ public class NicicoGenerator {
         return content;
     }
 
-    public static String camelToSnake(String phrase)
-    {
+    public static String camelToSnake(String phrase) {
         String regex = "([a-z])([A-Z]+)";
         String replacement = "$1_$2";
         String snake = phrase
