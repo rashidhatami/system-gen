@@ -4,6 +4,7 @@ package ir.net.nicico.spl;
 import com.google.common.base.CaseFormat;
 import com.google.common.collect.Sets;
 import ir.net.nicico.spl.types.EntityDefinition;
+import ir.net.nicico.spl.types.EntityFieldDefinition;
 import ir.net.nicico.spl.types.GlobalizedName;
 import ir.net.nicico.spl.types.SystemDefinition;
 
@@ -63,12 +64,12 @@ public class NicicoGenerator {
                 frontProjectPath,
                 farsiNames,
                 farsiFields,
-                entityLabels);
+                entityLabels, null);
 
 
     }
 
-    public void generateFromJson(SystemDefinition systemDefinition) {
+    public void generateFromJson(SystemDefinition systemDefinition) throws IOException {
 
         List<GlobalizedName> entityNameList = systemDefinition.getBackendDefinition().getEntityDefinitionList().stream().map(EntityDefinition::getName).collect(Collectors.toList());
         List<Map<String, String>> namesMap = entityNameList.stream().map(GlobalizedName::getNames).collect(Collectors.toList());
@@ -95,6 +96,9 @@ public class NicicoGenerator {
             entityLabels.put(entityEnName, entityFaName);
         });
 
+        FrontGenerator frontGenerator = new FrontGenerator();
+        frontGenerator.generateStructureOfProject(systemDefinition.getFrontendDefinition().getProjectName(), systemDefinition.getFrontendDefinition().getTargetPath());
+
         NicicoGenerator.generateAll(systemDefinition.getBackendDefinition().getBasePackage(),
                 engNames,
                 systemDefinition.getBackendDefinition().getTargetPath(),
@@ -110,10 +114,10 @@ public class NicicoGenerator {
                 systemDefinition.getBackendDefinition().getSecurityConfig().getJwtKey(),
                 systemDefinition.getBackendDefinition().getSecurityConfig().getTokenExpiration(),
                 systemDefinition.getBackendDefinition().getEnableServerSideValidation(),
-                systemDefinition.getFrontendDefinition().getProjectName(),
+                systemDefinition.getFrontendDefinition().getTargetPath(),
                 farsiNames,
                 farsiFields,
-                entityLabels);
+                entityLabels, systemDefinition);
     }
 
     public static void generateAll(String basePackage,
@@ -134,7 +138,8 @@ public class NicicoGenerator {
                                    String frontProjectPath,
                                    LinkedHashMap<String, String> farsiNames,
                                    LinkedHashMap<String, LinkedHashMap<String, String>> farsiFields,
-                                   LinkedHashMap<String, String> entityLabels) throws IOException {
+                                   LinkedHashMap<String, String> entityLabels,
+                                   SystemDefinition systemDefinition) throws IOException {
 
 
         generateStructureOfProject(projectName, basePackage, targetPath);
@@ -191,20 +196,25 @@ public class NicicoGenerator {
             generateAccessRoles(basePackage, securityPath.getPath());
         }
 
-        entityNameList.stream().forEach(entityName -> {
-            LinkedHashMap<String, String> fields = findFieldsForEntity(entityName);
+
+
+//        entityNameList.stream().forEach(entityName -> {
+        systemDefinition.getBackendDefinition().getEntityDefinitionList().forEach(entity -> {
+//            LinkedHashMap<String, String> fields = findFieldsForEntity(entityName);
+            String entityEnglishName = entity.getName().getNames().get("en");
+            String entityFarsiName = entity.getName().getNames().get("fa");
             try {
                 if (checkGeneration("generate.entity")) {
-                    generateEntity(basePackage, entityName, fields, modelPath.getPath());
+                    generateEntity(basePackage, entityEnglishName,entity.getEntityFieldDefinitionList() , modelPath.getPath());
                 }
                 if (checkGeneration("generate.dto")) {
-                    generateDto(basePackage, entityName, fields, dtoPath.getPath(), validationEnabled);
+                    generateDto(basePackage, entityEnglishName, entity.getEntityFieldDefinitionList(), dtoPath.getPath(), validationEnabled);
                 }
                 if (checkGeneration("generate.dao")) {
-                    generateDao(basePackage, entityName, daoPath.getPath());
+                    generateDao(basePackage, entityEnglishName, daoPath.getPath());
                 }
                 if (checkGeneration("generate.service")) {
-                    generateService(basePackage, entityName, servicePath.getPath());
+                    generateService(basePackage, entityEnglishName, servicePath.getPath());
                 }
                 if (checkGeneration("generate.general.service")) {
                     //fill service package
@@ -213,18 +223,20 @@ public class NicicoGenerator {
                     generatePagedResultClass(servicePath.getPath(), basePackage);
                 }
                 if (checkGeneration("generate.rest")) {
-                    generateRestService(basePackage, entityName, fields, restPath.getPath());
+                    generateRestService(basePackage, entityEnglishName, entity.getEntityFieldDefinitionList(), restPath.getPath());
                 }
 
-                FrontGenerator.generateEntityComponent(entityNameList, frontProjectPath, entityName, entityName, fields);
-                FrontGenerator.generateEntityService(frontProjectPath, entityName);
-                FrontGenerator.generateEntityHtmlView(frontProjectPath, entityName, farsiNames.get(entityName), fields, farsiFields.get(entityName), entityLabels);
+                FrontGenerator.generateEntityComponent(entityNameList, frontProjectPath, entityEnglishName, entityFarsiName, entity.getEntityFieldDefinitionList());
+                FrontGenerator.generateEntityService(frontProjectPath, entityEnglishName);
+                FrontGenerator.generateEntityHtmlView(frontProjectPath, systemDefinition, entity, entity.getEntityFieldDefinitionList());
 
 
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
             }
         });
+
+//        });
         FrontGenerator.refactorAppModule(frontProjectPath, entityNameList);
         FrontGenerator.generateRouter(frontProjectPath, entityNameList);
         FrontGenerator.generateSidebarComponent(frontProjectPath, entityNameList, farsiNames);
@@ -786,7 +798,7 @@ public class NicicoGenerator {
         return result;
     }
 
-    public static String generateEntity(String basePackage, String entityName, LinkedHashMap<String, String> fields, String targetPath) throws FileNotFoundException {
+    public static String generateEntity(String basePackage, String entityName, List<EntityFieldDefinition> entityFieldDefinitionList, String targetPath) throws FileNotFoundException {
         StringBuilder content = new StringBuilder("package #package.model;\n" +
                 "\n" +
                 "import com.aef3.data.api.DomainEntity;\n" +
@@ -804,81 +816,95 @@ public class NicicoGenerator {
                 .append("public class #Entity implements DomainEntity {\n")
                 .append("\n");
 
-        for (Map.Entry<String, String> entry : fields.entrySet()) {
+//        for (Map.Entry<String, String> entry : fields.entrySet()) {
+        entityFieldDefinitionList.forEach(field -> {
             content.append("\n");
-            if (entry.getKey().equalsIgnoreCase("id")) {
+            String fieldEnglishName = field.getName().getNames().get("en");
+            String fieldFarsiName = field.getName().getNames().get("fa");
+            String fieldType = field.getFieldType().getType();
+            if (field.getName().getNames().get("en").equalsIgnoreCase("id")) {
                 content.append("    @Id\n")
                         .append("    @Column(name = \"id\")\n")
                         .append("    @GeneratedValue(strategy = GenerationType.IDENTITY)\n")
-                        .append("    private ").append(entry.getValue()).append(" ").append(entry.getKey()).append(";")
+                        .append("    private ").append(fieldType).append(" ").append(fieldEnglishName).append(";")
                         .append("\n");
             } else {
-                if (entry.getValue().toLowerCase().contains("DropDown".toLowerCase())) {
-                    content.append("    @Column(name = \"").append(camelToSnake(entry.getKey())).append("\"");
-                    if (!findFieldNullability(entityName, entry.getKey())) {
+                if (fieldType.toLowerCase().contains("DropDown".toLowerCase())) {
+                    content.append("    @Column(name = \"").append(camelToSnake(fieldEnglishName)).append("\"");
+                    if (!field.getNullable()) {
                         content.append(", nullable = " + false);
                     }
-                    String length = findFieldLength(entityName, entry.getKey());
-                    if (length != null) {
+
+                    if (field.getLength() != null) {
+                        String length = field.getLength() + "";
                         content.append(", length = ").append(length);
                     }
                     content.append(")\n");
-                    content.append("    private Long").append(" ").append(entry.getKey()).append(";\n");
+                    content.append("    private Long").append(" ").append(fieldEnglishName).append(";\n");
                 } else {
-                    if (getBaseTypes().contains(entry.getValue())) {
-                        content.append("    @Column(name = \"").append(camelToSnake(entry.getKey())).append("\"");
-                        if (!findFieldNullability(entityName, entry.getKey())) {
+                    if (getBaseTypes().contains(fieldType)) {
+                        content.append("    @Column(name = \"").append(camelToSnake(fieldEnglishName)).append("\"");
+                        if (!field.getNullable()) {
                             content.append(", nullable = " + false);
                         }
                         //no need to write true, its default value
 //                    {
 //                        content.append(", nullable = " + true );
 //                    }
-                        String length = findFieldLength(entityName, entry.getKey());
-                        if (length != null) {
+                        if (field.getLength() != null){
+                            String length = field.getLength() + "";
                             content.append(", length = ").append(length);
                         }
                         content.append(")\n");
-                        if (entry.getValue().equals("Date")) {
+                        if (fieldType.equals("Date")) {
                             content.append("    @Temporal(TemporalType.TIMESTAMP)\n");
                         }
                     } else {
-                        content.append("    @JoinColumn(name = \"").append(camelToSnake(entry.getKey())).append("\", referencedColumnName = \"id\")\n")
+                        content.append("    @JoinColumn(name = \"").append(camelToSnake(fieldEnglishName)).append("\", referencedColumnName = \"id\")\n")
                                 .append("    @ManyToOne\n");
                     }
-                    content.append("    private ").append(entry.getValue()).append(" ").append(entry.getKey()).append(";\n");
+                    content.append("    private ").append(fieldType).append(" ").append(fieldEnglishName).append(";\n");
                 }
 
             }
-        }
+        });
+
+//        }
 
         content.append("\n\n");
 
-        for (Map.Entry<String, String> entry : fields.entrySet()) {
-            String firstCharFieldName = entry.getKey().substring(0, 1);
-            String upperCaseCharFieldName = entry.getKey().replaceFirst(firstCharFieldName, firstCharFieldName.toUpperCase());
+//        for (Map.Entry<String, String> entry : fields.entrySet()) {
+        entityFieldDefinitionList.forEach(field -> {
+            String fieldEnglishName = field.getName().getNames().get("en");
+            String fieldFarsiName = field.getName().getNames().get("fa");
+            String fieldType = field.getFieldType().getType();
 
-            if (entry.getValue().toLowerCase().contains("DropDown".toLowerCase())) {
+            String firstCharFieldName = fieldEnglishName.substring(0, 1);
+            String upperCaseCharFieldName = fieldEnglishName.replaceFirst(firstCharFieldName, firstCharFieldName.toUpperCase());
+
+            if (fieldType.toLowerCase().contains("DropDown".toLowerCase())) {
                 content.append("\n")
                         .append("    public Long get").append(upperCaseCharFieldName).append("() {\n")
-                        .append("        return ").append(entry.getKey()).append(";\n")
+                        .append("        return ").append(fieldEnglishName).append(";\n")
                         .append("    }\n")
                         .append("\n")
-                        .append("    public void set").append(upperCaseCharFieldName).append("(").append("Long ").append(entry.getKey()).append(") {\n")
-                        .append("       this.").append(entry.getKey()).append(" = ").append(entry.getKey()).append(";\n")
+                        .append("    public void set").append(upperCaseCharFieldName).append("(").append("Long ").append(fieldEnglishName).append(") {\n")
+                        .append("       this.").append(fieldEnglishName).append(" = ").append(fieldEnglishName).append(";\n")
                         .append("    }\n\n");
             } else {
 
                 content.append("\n")
-                        .append("    public ").append(entry.getValue()).append(" get").append(upperCaseCharFieldName).append("() {\n")
-                        .append("        return ").append(entry.getKey()).append(";\n")
+                        .append("    public ").append(fieldType).append(" get").append(upperCaseCharFieldName).append("() {\n")
+                        .append("        return ").append(fieldEnglishName).append(";\n")
                         .append("    }\n")
                         .append("\n")
-                        .append("    public void set").append(upperCaseCharFieldName).append("(").append(entry.getValue()).append(" ").append(entry.getKey()).append(") {\n")
-                        .append("       this.").append(entry.getKey()).append(" = ").append(entry.getKey()).append(";\n")
+                        .append("    public void set").append(upperCaseCharFieldName).append("(").append(fieldType).append(" ").append(fieldEnglishName).append(") {\n")
+                        .append("       this.").append(fieldEnglishName).append(" = ").append(fieldEnglishName).append(";\n")
                         .append("    }\n\n");
             }
-        }
+        });
+
+//        }
         content.append("\n");
 
         content.append("    @Override\n")
@@ -917,41 +943,41 @@ public class NicicoGenerator {
         return result;
     }
 
-    private static boolean findFieldNullability(String entityName, String fieldName) {
-        try {
-            String s = InitializrReaderUtility.getResourceProperity(entityName + ".field.nullable." + fieldName);
-            if (s.equalsIgnoreCase("false"))
-                return false;
-            return true;
-        } catch (Exception e) {
-            return true;
-        }
-    }
+//    private static boolean findFieldNullability(String entityName, String fieldName) {
+//        try {
+//            String s = InitializrReaderUtility.getResourceProperity(entityName + ".field.nullable." + fieldName);
+//            if (s.equalsIgnoreCase("false"))
+//                return false;
+//            return true;
+//        } catch (Exception e) {
+//            return true;
+//        }
+//    }
 
-    private static String findFieldLength(String entityName, String fieldName) {
-        try {
-            String s = InitializrReaderUtility.getResourceProperity(entityName + ".field.length." + fieldName);
-            if (Integer.parseInt(s) > 0) {
-                return s;
-            }
-            String type = InitializrReaderUtility.getResourceProperity(entityName + ".field.type." + fieldName);
-            if (type.equalsIgnoreCase("Integer")
-                    || type.equalsIgnoreCase("int")
-                    || type.equalsIgnoreCase("double")
-                    || type.equalsIgnoreCase("long")
-                    || type.equalsIgnoreCase("float")
-                    || type.equalsIgnoreCase("byte")) {
-                return "10";
-            }
-            if (type.equalsIgnoreCase("String")
-                    || type.equalsIgnoreCase("char")) {
-                return "100";
-            }
-        } catch (Exception e) {
-            return null;
-        }
-        return "10";
-    }
+//    private static String findFieldLength(String entityName, String fieldName) {
+//        try {
+//            String s = InitializrReaderUtility.getResourceProperity(entityName + ".field.length." + fieldName);
+//            if (Integer.parseInt(s) > 0) {
+//                return s;
+//            }
+//            String type = InitializrReaderUtility.getResourceProperity(entityName + ".field.type." + fieldName);
+//            if (type.equalsIgnoreCase("Integer")
+//                    || type.equalsIgnoreCase("int")
+//                    || type.equalsIgnoreCase("double")
+//                    || type.equalsIgnoreCase("long")
+//                    || type.equalsIgnoreCase("float")
+//                    || type.equalsIgnoreCase("byte")) {
+//                return "10";
+//            }
+//            if (type.equalsIgnoreCase("String")
+//                    || type.equalsIgnoreCase("char")) {
+//                return "100";
+//            }
+//        } catch (Exception e) {
+//            return null;
+//        }
+//        return "10";
+//    }
 
     private static String generateRunnerClass(String path, String basePackage, String projectName) throws FileNotFoundException {
         String content = "package #package;\n" +
@@ -1066,10 +1092,10 @@ public class NicicoGenerator {
 
     }
 
-    private static String generateDto(String basePackage, String entityName, LinkedHashMap<String, String> fieldMap, String targetPath, boolean validationEnabled) throws FileNotFoundException {
+    private static String generateDto(String basePackage, String entityName, List<EntityFieldDefinition> entityFieldDefinitionList, String targetPath, boolean validationEnabled) throws FileNotFoundException {
         String result = generateDtoHeader();
-        result += generateDtoFields(fieldMap, validationEnabled, entityName);
-        result += generateDtoMappings(fieldMap, entityName);
+        result += generateDtoFields(entityFieldDefinitionList, validationEnabled, entityName);
+        result += generateDtoMappings(entityFieldDefinitionList, entityName);
         result += generateDtoOverrideMethods(entityName);
         result += generateFooter();
 
@@ -1107,77 +1133,86 @@ public class NicicoGenerator {
 
     }
 
-    private static String generateDtoFields(LinkedHashMap<String, String> fields, boolean validationEnabled, String entityName) {
+    private static String generateDtoFields(List<EntityFieldDefinition> entityFieldDefinitionList, boolean validationEnabled, String entityName) {
 
         StringBuilder content = new StringBuilder();
 
         content.append("\n\n");
 
-        for (Map.Entry<String, String> entry : fields.entrySet()) {
-            if (getBaseTypes().contains(entry.getValue())) {
+//        for (Map.Entry<String, String> entry : fields.entrySet()) {
+        entityFieldDefinitionList.forEach(field -> {
+            String fieldEnglishName = field.getName().getNames().get("en");
+            String fieldFarsiName = field.getName().getNames().get("fa");
+            String fieldType = field.getFieldType().getType();
+            if (getBaseTypes().contains(fieldType)) {
                 if (validationEnabled) {
-                    if (!findFieldNullability(entityName, entry.getKey())) {
-                        if (entry.getValue().trim().equalsIgnoreCase("String")) {
-                            content.append("\n    @NotEmpty(message = \"{").append(entry.getKey()).append(".should.not.be.Empty}\")");
+                    if (!field.getNullable()) {
+                        if (fieldType.trim().equalsIgnoreCase("String")) {
+                            content.append("\n    @NotEmpty(message = \"{").append(fieldEnglishName).append(".should.not.be.Empty}\")");
                         } else {
-                            content.append("\n    @NotNull(message = \"{").append(entry.getKey()).append(".should.not.be.null}\")");
+                            content.append("\n    @NotNull(message = \"{").append(fieldEnglishName).append(".should.not.be.null}\")");
                         }
                     }
                 }
-                content.append("\n    private ").append(entry.getValue()).append(" ").append(entry.getKey()).append(";");
-            } else if (entry.getValue().toLowerCase().contains("DropDown".toLowerCase())) {
-                content.append("\n    private Long").append(" ").append(entry.getKey()).append(";");
+                content.append("\n    private ").append(fieldType).append(" ").append(fieldEnglishName).append(";");
+            } else if (fieldType.toLowerCase().contains("DropDown".toLowerCase())) {
+                content.append("\n    private Long").append(" ").append(fieldEnglishName).append(";");
             } else {
-                content.append("\n    private ").append(entry.getValue() + "Dto").append(" ").append(entry.getKey()).append(";");
+                content.append("\n    private ").append(fieldType + "Dto").append(" ").append(fieldEnglishName).append(";");
             }
-        }
+        });
+
+//        }
 
         content.append("\n \n");
 
-        for (Map.Entry<String, String> entry : fields.entrySet()) {
+//        for (Map.Entry<String, String> entry : fields.entrySet()) {
+        entityFieldDefinitionList.forEach(field -> {
+            String fieldEnglishName = field.getName().getNames().get("en");
+            String fieldFarsiName = field.getName().getNames().get("fa");
+            String fieldType = field.getFieldType().getType();
+            String firstCharFieldName = fieldEnglishName.substring(0, 1);
+            String upperCaseCharFieldName = fieldEnglishName.replaceFirst(firstCharFieldName, firstCharFieldName.toUpperCase());
 
-            String firstCharFieldName = entry.getKey().substring(0, 1);
-            String upperCaseCharFieldName = entry.getKey().replaceFirst(firstCharFieldName, firstCharFieldName.toUpperCase());
-
-            if (entry.getValue().toLowerCase().contains("DropDown".toLowerCase())) {
+            if (fieldType.toLowerCase().contains("DropDown".toLowerCase())) {
                 content.append("\n")
                         .append("    public Long get").append(upperCaseCharFieldName).append("() {\n")
-                        .append("        return ").append(entry.getKey()).append(";\n")
+                        .append("        return ").append(fieldEnglishName).append(";\n")
                         .append("    }\n")
                         .append("\n")
-                        .append("    public void set").append(upperCaseCharFieldName).append("(").append("Long ").append(entry.getKey()).append(") {\n")
-                        .append("       this.").append(entry.getKey()).append(" = ").append(entry.getKey()).append(";\n")
+                        .append("    public void set").append(upperCaseCharFieldName).append("(").append("Long ").append(fieldEnglishName).append(") {\n")
+                        .append("       this.").append(fieldEnglishName).append(" = ").append(fieldEnglishName).append(";\n")
                         .append("    }\n\n");
-            } else if (getBaseTypes().contains(entry.getValue())) {
-                content.append("\n    public " + entry.getValue() + " get" + upperCaseCharFieldName + "() {\n" +
-                        "        return " + entry.getKey() + ";\n" +
+            } else if (getBaseTypes().contains(fieldType)) {
+                content.append("\n    public " + fieldType + " get" + upperCaseCharFieldName + "() {\n" +
+                        "        return " + fieldEnglishName + ";\n" +
                         "    }\n" +
 
-                        "    public void set" + upperCaseCharFieldName + "(" + entry.getValue() + " " + entry.getKey() + ") {\n" +
-                        "        this." + entry.getKey() + " = " + entry.getKey() + ";\n" +
+                        "    public void set" + upperCaseCharFieldName + "(" + fieldType + " " + fieldEnglishName + ") {\n" +
+                        "        this." +fieldEnglishName + " = " + fieldEnglishName + ";\n" +
                         "    }" +
                         "\n");
 
             } else {
 
-                content.append("\n    public " + entry.getValue() + "Dto" + " get" + upperCaseCharFieldName + "() {\n" +
-                        "        return " + entry.getKey() + ";\n" +
+                content.append("\n    public " + fieldType + "Dto" + " get" + upperCaseCharFieldName + "() {\n" +
+                        "        return " + fieldEnglishName + ";\n" +
                         "    }\n" +
 
-                        "    public void set" + upperCaseCharFieldName + "(" + entry.getValue() + "Dto" + " " + entry.getKey() + ") {\n" +
-                        "        this." + entry.getKey() + " = " + entry.getKey() + ";\n" +
+                        "    public void set" + upperCaseCharFieldName + "(" + fieldType + "Dto" + " " + fieldEnglishName + ") {\n" +
+                        "        this." + fieldEnglishName + " = " + fieldEnglishName + ";\n" +
                         "    }" +
                         "\n");
             }
 
-
-        }
+        });
+//        }
         String result = content.toString();
         return result;
 
     }
 
-    private static String generateDtoMappings(LinkedHashMap<String, String> fields, String entityName) {
+    private static String generateDtoMappings(List<EntityFieldDefinition> fieldDefinitionList, String entityName) {
 
         String firstChar = entityName.substring(0, 1);
         String entityInstanceName = entityName.replaceFirst(firstChar, firstChar.toLowerCase());
@@ -1194,21 +1229,28 @@ public class NicicoGenerator {
                 "        #EntityDto dto = new #EntityDto();");
 
 
-        for (Map.Entry<String, String> entry : fields.entrySet()) {
-            String firstCharFieldName = entry.getKey().substring(0, 1);
-            String upperCaseCharFieldName = entry.getKey().replaceFirst(firstCharFieldName, firstCharFieldName.toUpperCase());
-            if (entry.getValue().toLowerCase().contains("DropDown".toLowerCase())) {
+//        for (Map.Entry<String, String> entry : fields.entrySet()) {
+        fieldDefinitionList.forEach(field -> {
+            String fieldEnglishName = field.getName().getNames().get("en");
+            String fieldFarsiName = field.getName().getNames().get("fa");
+            String fieldType = field.getFieldType().getType();
+
+            String firstCharFieldName = fieldEnglishName.substring(0, 1);
+            String upperCaseCharFieldName = fieldEnglishName.replaceFirst(firstCharFieldName, firstCharFieldName.toUpperCase());
+            if (fieldType.toLowerCase().contains("DropDown".toLowerCase())) {
                 content.append("\n        dto.set").append(upperCaseCharFieldName).append("(").append(entityInstanceName).append(".get").append(upperCaseCharFieldName).append("()").append(");");
-            } else if (getBaseTypes().contains(entry.getValue())) {
+            } else if (getBaseTypes().contains(fieldType)) {
                 content.append("\n        dto.set").append(upperCaseCharFieldName).append("(").append(entityInstanceName).append(".get").append(upperCaseCharFieldName).append("()").append(");");
             } else {
                 content.append("\n        dto.set").append(upperCaseCharFieldName).append("(")
-                        .append(entry.getValue()).append("Dto.toDto(")
+                        .append(fieldType).append("Dto.toDto(")
                         .append(entityInstanceName).append(".get").append(upperCaseCharFieldName).append("()")
                         .append(")")
                         .append(");");
             }
-        }
+        });
+
+//        }
 
         content.append("\n        return dto;");
 
@@ -1225,21 +1267,28 @@ public class NicicoGenerator {
                 "        #Entity #entity = new #Entity();");
 
 
-        for (Map.Entry<String, String> entry : fields.entrySet()) {
-            String firstCharFieldName = entry.getKey().substring(0, 1);
-            String upperCaseCharFieldName = entry.getKey().replaceFirst(firstCharFieldName, firstCharFieldName.toUpperCase());
-            if (getBaseTypes().contains(entry.getValue())) {
+//        for (Map.Entry<String, String> entry : fields.entrySet()) {
+        fieldDefinitionList.forEach(field -> {
+            String fieldEnglishName = field.getName().getNames().get("en");
+            String fieldFarsiName = field.getName().getNames().get("fa");
+            String fieldType = field.getFieldType().getType();
+
+            String firstCharFieldName = fieldEnglishName.substring(0, 1);
+            String upperCaseCharFieldName = fieldEnglishName.replaceFirst(firstCharFieldName, firstCharFieldName.toUpperCase());
+            if (getBaseTypes().contains(fieldType)) {
                 content.append("\n        #entity.set").append(upperCaseCharFieldName).append("(").append("dto").append(".get").append(upperCaseCharFieldName).append("()").append(");");
-            } else if (entry.getValue().toLowerCase().contains("DropDown".toLowerCase())) {
+            } else if (fieldType.toLowerCase().contains("DropDown".toLowerCase())) {
                 content.append("\n        #entity.set").append(upperCaseCharFieldName).append("(").append("dto").append(".get").append(upperCaseCharFieldName).append("()").append(");");
             } else {
                 content.append("\n        #entity.set").append(upperCaseCharFieldName).append("(")
-                        .append(entry.getValue()).append("Dto.toEntity(")
+                        .append(fieldType).append("Dto.toEntity(")
                         .append("dto").append(".get").append(upperCaseCharFieldName).append("()")
                         .append(")")
                         .append(");");
             }
-        }
+        });
+
+//        }
 
         content.append("\n        return #entity;");
 
@@ -1272,13 +1321,13 @@ public class NicicoGenerator {
 
     }
 
-    private static void generateRestService(String basePackage, String entityName, LinkedHashMap<String, String> fieldMap, String targetPath) throws FileNotFoundException {
+    private static void generateRestService(String basePackage, String entityName, List<EntityFieldDefinition> fieldDefinitionList, String targetPath) throws FileNotFoundException {
 
         String firstChar = entityName.substring(0, 1);
         String entityInstanceName = entityName.replaceFirst(firstChar, firstChar.toLowerCase());
 
         String result = generateRestHeader();
-        result += generateRestGetMethods(fieldMap, entityName);
+        result += generateRestGetMethods(fieldDefinitionList, entityName);
         result += generateRestPostAndRemove(entityName);
         result += generateFooter();
 
@@ -1334,7 +1383,7 @@ public class NicicoGenerator {
         return content;
     }
 
-    private static String generateRestGetMethods(LinkedHashMap<String, String> fields, String entity) {
+    private static String generateRestGetMethods(List<EntityFieldDefinition> fieldDefinitionList, String entity) {
 
         StringBuilder content = new StringBuilder(
                 "\n\n");
@@ -1352,12 +1401,18 @@ public class NicicoGenerator {
         content.append("    @GetMapping(\"/search\")\n" +
                 "    public PagedResult search(");
 
-        for (Map.Entry<String, String> entry : fields.entrySet()) {
-            if (getBaseTypes().contains(entry.getValue())) {
-                content.append("\n                                      @RequestParam(value = \"").append(entry.getKey()).append("\", required = false) ");
-                content.append(entry.getValue()).append(" ").append(entry.getKey()).append(",");
+//        for (Map.Entry<String, String> entry : fields.entrySet()) {
+        for (EntityFieldDefinition field : fieldDefinitionList) {
+            String fieldEnglishName = field.getName().getNames().get("en");
+            String fieldFarsiName = field.getName().getNames().get("fa");
+            String fieldType = field.getFieldType().getType();
+            if (getBaseTypes().contains(fieldType)) {
+                content.append("\n                                      @RequestParam(value = \"").append(fieldEnglishName).append("\", required = false) ");
+                content.append(fieldType).append(" ").append(fieldEnglishName).append(",");
             }
         }
+
+//        }
 
         content.append("\n                                      @RequestParam(value = \"").append("firstIndex").append("\", required = false) ");
         content.append("Integer").append(" ").append("firstIndex").append(",");
@@ -1383,13 +1438,19 @@ public class NicicoGenerator {
 
 
         content.append("            #EntityDto #entity = new #EntityDto();\n");
-        for (Map.Entry<String, String> entry : fields.entrySet()) {
-            if (getBaseTypes().contains(entry.getValue())) {
-                String firstCharFieldName = entry.getKey().substring(0, 1);
-                String upperCaseCharFieldName = entry.getKey().replaceFirst(firstCharFieldName, firstCharFieldName.toUpperCase());
-                content.append("            #entity.set" + upperCaseCharFieldName + "(" + entry.getKey() + "); \n");
+//        for (Map.Entry<String, String> entry : fields.entrySet()) {
+        for (EntityFieldDefinition field : fieldDefinitionList) {
+            String fieldEnglishName = field.getName().getNames().get("en");
+            String fieldFarsiName = field.getName().getNames().get("fa");
+            String fieldType = field.getFieldType().getType();
+            if (getBaseTypes().contains(fieldType)) {
+                String firstCharFieldName = fieldEnglishName.substring(0, 1);
+                String upperCaseCharFieldName = fieldEnglishName.replaceFirst(firstCharFieldName, firstCharFieldName.toUpperCase());
+                content.append("            #entity.set" + upperCaseCharFieldName + "(" + fieldEnglishName + "); \n");
             }
         }
+
+//        }
 
         content.append("\n            return #entityService.findPagedByExample(#entity,\n" +
                 "                   sortObjectList,\n" +

@@ -1,10 +1,10 @@
 package ir.net.nicico.spl.rest;
 
+import ir.net.nicico.spl.NicicoGenerator;
 import ir.net.nicico.spl.types.*;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -16,6 +16,7 @@ public class GeneratorRestService {
     public SystemDefinition createPureStructureJson() {
         SystemDefinition systemDefinition = new SystemDefinition();
         systemDefinition.setBackendDefinition(new BackendDefinition());
+        systemDefinition.getBackendDefinition().setDatabaseConnection(new DatabaseConnection());
         systemDefinition.getBackendDefinition().setEntityDefinitionList(new ArrayList<>());
         systemDefinition.getBackendDefinition().getEntityDefinitionList().add(new EntityDefinition());
         systemDefinition.getBackendDefinition().getEntityDefinitionList().get(0).setEntityFieldDefinitionList(new ArrayList<>());
@@ -37,5 +38,9 @@ public class GeneratorRestService {
         return systemDefinition;
     }
 
-
+    @PostMapping("/")
+    public void generateFromJson(@RequestBody SystemDefinition systemDefinition) throws IOException {
+        NicicoGenerator nicicoGenerator = new NicicoGenerator();
+        nicicoGenerator.generateFromJson(systemDefinition);
+    }
 }

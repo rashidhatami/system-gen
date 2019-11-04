@@ -3,6 +3,9 @@ package ir.net.nicico.spl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import ir.net.nicico.spl.types.DropDownType;
+import ir.net.nicico.spl.types.EntityDefinition;
+import ir.net.nicico.spl.types.EntityFieldDefinition;
+import ir.net.nicico.spl.types.SystemDefinition;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -10,6 +13,7 @@ import java.nio.file.Paths;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -28,17 +32,17 @@ public class FrontGenerator {
 
     public static void generateFrontProject(String targetPath, String projectName) {
 //        try {
-            System.out.println("Working Directory = " +
-                    System.getProperty("user.dir"));
+        System.out.println("Working Directory = " +
+                System.getProperty("user.dir"));
 //            File file = ResourceUtils.getFile("src/main/resources/nicico2ng.zip");
-            File file = new File(
-                    FrontGenerator.class.getClassLoader().getResource("nicico2ng.zip").getFile()
-            );
-            String rootPath = targetPath;
-            File filePath = new File(rootPath);
-            filePath.mkdirs();
-            extractZip(file, filePath);
-            replaceText(filePath.getPath(), projectName);
+        File file = new File(
+                FrontGenerator.class.getClassLoader().getResource("nicico2ng.zip").getFile()
+        );
+        String rootPath = targetPath;
+        File filePath = new File(rootPath);
+        filePath.mkdirs();
+        extractZip(file, filePath);
+        replaceText(filePath.getPath(), projectName);
 //        } catch (IOException e) {
 //            e.printStackTrace();
 //        }
@@ -96,7 +100,7 @@ public class FrontGenerator {
         return content;
     }
 
-    public static String generateEntityComponent(List<String> entitiesList, String path, String entityName, String entityFarsiName, Map<String, String> fields) throws FileNotFoundException {
+    public static String generateEntityComponent(List<String> entitiesList, String path, String entityName, String entityFarsiName, List<EntityFieldDefinition> fieldDefinitionList) throws FileNotFoundException {
 
         StringBuilder content = new StringBuilder("import { Component, OnInit } from '@angular/core';\n" +
                 "import {#EntityService} from './#entity.service';\n" +
@@ -105,11 +109,15 @@ public class FrontGenerator {
                 "import {CommonService} from '../common.service';\n" +
                 "import * as moment from 'jalali-moment';\n");
 
-        fields.forEach((k, v) -> {
-            if (entitiesList.contains(v)) {
-                content.append("import {").append(v).append("Service} from '../").append(v.toLowerCase()).append("/").append(v.toLowerCase()).append(".service'; \n");
+        fieldDefinitionList.forEach(field -> {
+            if (entitiesList.contains(field.getFieldType().getType())) {
+                content.append("import {").append(field.getFieldType().getType()).append("Service} from '../").append(field.getFieldType().getType().toLowerCase()).append("/").append(field.getFieldType().getType().toLowerCase()).append(".service'; \n");
             }
         });
+
+//        fields.forEach((k, v) -> {
+//
+//        });
         content.append("import {ConfirmationService} from 'primeng/api';\n" +
                 "\n" +
                 "@Component({\n" +
@@ -122,30 +130,51 @@ public class FrontGenerator {
                 "  constructor(private #LowerCaseService: #EntityService,\n" +
                 "              private messageService: MessageService,\n" +
                 "              private commonService: CommonService,\n");
-        fields.forEach((k, v) -> {
-            if (entitiesList.contains(v)) {
-                content.append("                private " + v.toLowerCase() + "Service: " + v + "Service,\n");
+
+        fieldDefinitionList.forEach(field -> {
+            if (entitiesList.contains(field.getFieldType().getType())) {
+                content.append("                private " + field.getFieldType().getType().toLowerCase() + "Service: " + field.getFieldType().getType() + "Service,\n");
             }
         });
+
+//        fields.forEach((k, v) -> {
+//            if (entitiesList.contains(v)) {
+//                content.append("                private " + v.toLowerCase() + "Service: " + v + "Service,\n");
+//            }
+//        });
         content.append("              private confirmationService: ConfirmationService) { \n" +
                 "\n" +
                 "   }\n" +
                 "\n" + "");
 
-        fields.forEach((k, v) -> {
-            if (v.toLowerCase().contains("DropDown".toLowerCase())) {
+
+        fieldDefinitionList.forEach(field -> {
+            if (field.getFieldType().getType().toLowerCase().contains("DropDown".toLowerCase())) {
                 ObjectMapper objectMapper = new ObjectMapper();
-                int start = v.indexOf("[");
-                int end = v.indexOf("]");
-                String json = v.substring(start, end + 1);
+                String json = field.getFieldType().getOptions();
                 try {
                     DropDownType[] list = objectMapper.readValue(json, DropDownType[].class);
                 } catch (JsonProcessingException e) {
                     e.printStackTrace();
                 }
-                content.append("   " + k + "options = " + json.replace("\"", "'") + "\n");
+                content.append("   " + field.getName().getNames().get("en") + "options = " + json.replace("\"", "'") + "\n");
             }
         });
+
+//        fields.forEach((k, v) -> {
+//            if (v.toLowerCase().contains("DropDown".toLowerCase())) {
+//                ObjectMapper objectMapper = new ObjectMapper();
+//                int start = v.indexOf("[");
+//                int end = v.indexOf("]");
+//                String json = v.substring(start, end + 1);
+//                try {
+//                    DropDownType[] list = objectMapper.readValue(json, DropDownType[].class);
+//                } catch (JsonProcessingException e) {
+//                    e.printStackTrace();
+//                }
+//                content.append("   " + k + "options = " + json.replace("\"", "'") + "\n");
+//            }
+//        });
 
         content.append(
                 "   #LowerCase: any;\n" +
@@ -153,29 +182,44 @@ public class FrontGenerator {
                         "\n" +
                         "  items = {data: [], count : 0};\n");
 
-        fields.forEach((k, v) -> {
-            if (entitiesList.contains(v)) {
-                content.append("  " + k + "List = [];\n");
+        fieldDefinitionList.forEach(field -> {
+            if (entitiesList.contains(field.getFieldType().getType())) {
+                content.append("  ").append(field.getName().getNames().get("en")).append("List = [];\n");
             }
         });
+//        fields.forEach((k, v) -> {
+//            if (entitiesList.contains(v)) {
+//                content.append("  " + k + "List = [];\n");
+//            }
+//        });
 
         content.append("\n" +
                 "  ngOnInit() {\n");
-        fields.forEach((k, v) -> {
-            if (v.contains("DropDown")) {
-                content.append("    this." + k + "options = this.commonService.preparePureListToDropdown(this." + k + "options);\n");
+        fieldDefinitionList.forEach(field -> {
+            if (field.getFieldType().getType().contains("DropDown")) {
+                content.append("    this." + field.getName().getNames().get("en") + "options = this.commonService.preparePureListToDropdown(this." + field.getName().getNames().get("en") + "options);\n");
             }
         });
+
+//        fields.forEach((k, v) -> {
+//            if (v.contains("DropDown")) {
+//                content.append("    this." + k + "options = this.commonService.preparePureListToDropdown(this." + k + "options);\n");
+//            }
+//        });
         content.append("    this.#LowerCase =  new Object();\n" +
                 "    this.#LowerCaseService.list(new QueryOptions(), 'search').subscribe(res => {\n" +
                 "      console.log('list call res', res);\n" +
                 "      this.items = res;\n");
         content.append("    });\n");
-        fields.forEach((k, v) -> {
-            if (entitiesList.contains(v)) {
-                content.append("        this.fetch" + v + "List();\n");
+
+        fieldDefinitionList.forEach(field -> {
+            if (entitiesList.contains(field.getFieldType().getType())) {
+                content.append("        this.fetch" + field.getName().getNames().get("en") + "List();\n");
             }
         });
+//        fields.forEach((k, v) -> {
+//
+//        });
         content.append("  }\n");
 
         content.append("  loadItems(event: any) {\n" +
@@ -188,27 +232,49 @@ public class FrontGenerator {
                 "      this.items = res;\n" +
                 "    });\n" +
                 "  }\n\n");
-        fields.forEach((k, v) -> {
-            if (entitiesList.contains(v)) {
-                content.append("  fetch" + v + "List() {\n" +
+
+        fieldDefinitionList.forEach(field -> {
+            if (entitiesList.contains(field.getFieldType().getType())) {
+                content.append("  fetch" + field.getFieldType().getType() + "List() {\n" +
                         "    let event = {first : 0, rows : 20};\n" +
                         "    let query = new QueryOptions();\n" +
                         "    query.options = [{key: 'firstIndex', value: event.first}, {key: 'pageSize', value: event.rows}];\n" +
-                        "    this." + v.toLowerCase() + "Service.list(query, 'search').subscribe(res => {\n" +
-                        "      this." + k + "List = res.data;\n" +
+                        "    this." + field.getFieldType().getType().toLowerCase() + "Service.list(query, 'search').subscribe(res => {\n" +
+                        "      this." + field.getFieldType().getType() + "List = res.data;\n" +
                         "    });\n" +
                         "  }\n\n");
             }
         });
 
+
+//        fields.forEach((k, v) -> {
+//            if (entitiesList.contains(v)) {
+//                content.append("  fetch" + v + "List() {\n" +
+//                        "    let event = {first : 0, rows : 20};\n" +
+//                        "    let query = new QueryOptions();\n" +
+//                        "    query.options = [{key: 'firstIndex', value: event.first}, {key: 'pageSize', value: event.rows}];\n" +
+//                        "    this." + v.toLowerCase() + "Service.list(query, 'search').subscribe(res => {\n" +
+//                        "      this." + k + "List = res.data;\n" +
+//                        "    });\n" +
+//                        "  }\n\n");
+//            }
+//        });
+
         content.append("  save() {\n");
-        fields.forEach((k, v) -> {
-            if (v.contains("DropDown")) {
-                content.append("    if(this.#LowerCase." + k + ") { \n");
-                content.append("        this.#LowerCase." + k + " = this.#LowerCase." + k + ".value;\n");
+        fieldDefinitionList.forEach(field -> {
+            if (field.getFieldType().getType().contains("DropDown")) {
+                content.append("    if(this.#LowerCase." + field.getName().getNames().get("en") + ") { \n");
+                content.append("        this.#LowerCase." + field.getName().getNames().get("en") + " = this.#LowerCase." + field.getName().getNames().get("en") + ".value;\n");
                 content.append("    }\n");
             }
         });
+//        fields.forEach((k, v) -> {
+//            if (v.contains("DropDown")) {
+//                content.append("    if(this.#LowerCase." + k + ") { \n");
+//                content.append("        this.#LowerCase." + k + " = this.#LowerCase." + k + ".value;\n");
+//                content.append("    }\n");
+//            }
+//        });
         content.append("    this.#LowerCaseService.create(this.#LowerCase, 'save').subscribe(res => {\n" +
                 "      this.#LowerCase = res;\n" +
                 "      this.loadItems(null);\n" +
@@ -227,11 +293,17 @@ public class FrontGenerator {
                 "\n" +
                 "  edit(item) {\n" +
                 "    this.#LowerCase = JSON.parse(JSON.stringify(item));\n");
-        fields.forEach((k, v) -> {
-            if (v.contains("DropDown")) {
-                content.append("    this.#LowerCase." + k + " = this." + k + "options.filter(v => v.value == this.#LowerCase." + k + ")[0];\n");
+
+        fieldDefinitionList.forEach(field -> {
+            if (field.getFieldType().getType().contains("DropDown")) {
+                content.append("    this.#LowerCase." + field.getName().getNames().get("en") + " = this." + field.getName().getNames().get("en") + "options.filter(v => v.value == this.#LowerCase." + field.getName().getNames().get("en") + ")[0];\n");
             }
         });
+//        fields.forEach((k, v) -> {
+//            if (v.contains("DropDown")) {
+//                content.append("    this.#LowerCase." + k + " = this." + k + "options.filter(v => v.value == this.#LowerCase." + k + ")[0];\n");
+//            }
+//        });
         content.append("    this.convertDateFields();\n" +
                 "  }\n" +
                 "\n" +
@@ -242,11 +314,17 @@ public class FrontGenerator {
                 "\n" +
                 "   convertDateFields() {\n");
 
-        fields.forEach((k, v) -> {
-            if (k.toLowerCase().contains("date")) {
-                content.append("            this.#LowerCase." + k + " = moment(this.#LowerCase." + k + ")\n");
+        fieldDefinitionList.forEach(field -> {
+            if (field.getName().getNames().get("en").toLowerCase().contains("date")) {
+                content.append("            this.#LowerCase." + field.getName().getNames().get("en") + " = moment(this.#LowerCase." + field.getName().getNames().get("en") + ")\n");
             }
         });
+
+//        fields.forEach((k, v) -> {
+//            if (k.toLowerCase().contains("date")) {
+//                content.append("            this.#LowerCase." + k + " = moment(this.#LowerCase." + k + ")\n");
+//            }
+//        });
         content.append("  }\n" +
                 "\n" +
                 "   confirm(item) {\n" +
@@ -318,7 +396,7 @@ public class FrontGenerator {
 
     }
 
-    public static String generateEntityHtmlView(String path, String entityName, String entityFarsiName, Map<String, String> fields, Map<String, String> farsiFieldsNames, Map<String, String> entityLabels) throws FileNotFoundException {
+    public static String generateEntityHtmlView(String path, SystemDefinition systemDefinition, EntityDefinition entityDefinition, List<EntityFieldDefinition> entityFieldDefinitionList) throws FileNotFoundException {
         StringBuilder content = new StringBuilder("<p-toast [style]=\"{marginTop: '30px'}\" position=\"top-center\" ></p-toast>\n" +
                 "<div class=\"main-content\">\n" +
                 "\n" +
@@ -328,35 +406,37 @@ public class FrontGenerator {
                 "        #FarsiName\n" +
                 "      </p-header>\n" +
                 "\n");
-        fields.forEach((k, v) -> {
+
+        entityFieldDefinitionList.forEach(field -> {
             content.append(
                     "      <div class=\"row\" style=\"direction: rtl\">\n");
             content.append("        <div class=\"col-lg-4\">\n" +
                     "\n" +
-                    "       " + farsiFieldsNames.get(k) + "\n" +
+                    "       " + field.getName().getNames().get("fa") + "\n" +
                     "        </div>\n");
             content.append("        <div class=\"col-lg-4\" style=\"text-align: right;\">\n");
 
 
-            if (v.toLowerCase().contains("Date".toLowerCase())) {
+            if (field.getFieldType().getType().toLowerCase().contains("Date".toLowerCase())) {
                 content.append("        <dp-date-picker \n" +
                         "                dir=\"rtl\"\n" +
-                        "                [(ngModel)]=\"#LowerCase." + k + "\"\n" +
+                        "                [(ngModel)]=\"#LowerCase." + field.getName().getNames().get("en") + "\"\n" +
                         "                mode=\"day\"\n" +
                         "                placeholder=\"تاریخ\"\n" +
                         "                theme=\"dp-material\">\n" +
                         "          </dp-date-picker>\n");
-            } else if (v.toLowerCase().contains("DropDown".toLowerCase())) {
+            } else if (field.getFieldType().getType().toLowerCase().contains("DropDown".toLowerCase())) {
 
-                content.append("          <p-dropdown [options]=\"" + k + "options\" dataKey=\"value\" [(ngModel)]=\"#LowerCase." + k + "\" optionLabel=\"label\" dataKey=\"value\" ></p-dropdown>\n");
-            } else if (NicicoGenerator.getBaseTypes().contains(v)) {
-                content.append("          <input pInputText type=\"text\" [(ngModel)]=\"#LowerCase." + k + "\"");
-                if (GeneratorTools.isInteger(v)) {
+                content.append("          <p-dropdown [options]=\"" + field.getName().getNames().get("en") + "options\" dataKey=\"value\" [(ngModel)]=\"#LowerCase." + field.getName().getNames().get("en") + "\" optionLabel=\"label\" dataKey=\"value\" ></p-dropdown>\n");
+            } else if (NicicoGenerator.getBaseTypes().contains(field.getFieldType().getType())) {
+                content.append("          <input pInputText type=\"text\" [(ngModel)]=\"#LowerCase." + field.getName().getNames().get("en") + "\"");
+                if (GeneratorTools.isInteger(field.getFieldType().getType())) {
                     content.append(" pKeyFilter=\"int\" ");
                 }
                 content.append(" >\n");
             } else {
-                content.append("          <p-dropdown [options]=\"" + k + "List\" [(ngModel)]=\"#LowerCase." + k + "\" optionLabel=\"" + entityLabels.get(v) + "\"  dataKey=\"value\" ></p-dropdown>\n");
+                List<String> labelList = systemDefinition.getBackendDefinition().getEntityDefinitionList().stream().filter(e -> e.getName().getNames().get("en").equals(field.getFieldType().getType())).map(EntityDefinition::getLabel).collect(Collectors.toList());
+                content.append("          <p-dropdown [options]=\"" + field.getName().getNames().get("en") + "List\" [(ngModel)]=\"#LowerCase." + field.getName().getNames().get("en") + "\" optionLabel=\"" +  labelList.get(0) + "\"  dataKey=\"value\" ></p-dropdown>\n");
             }
             content.append("        </div>\n");
             content.append(
@@ -364,8 +444,85 @@ public class FrontGenerator {
                             "\n" +
                             "        </div>\n");
             content.append("    </div>\n");
-
         });
+//
+//        entityFieldDefinitionList.forEach(field -> {
+//            content.append(
+//                    "      <div class=\"row\" style=\"direction: rtl\">\n");
+//            content.append("        <div class=\"col-lg-4\">\n" +
+//                    "\n" +
+//                    "       " + field.getName().getNames().get("fa") + "\n" +
+//                    "        </div>\n");
+//            content.append("        <div class=\"col-lg-4\" style=\"text-align: right;\">\n");
+//
+//
+//            if (field.getFieldType().getType().toLowerCase().contains("Date".toLowerCase())) {
+//                content.append("        <dp-date-picker \n" +
+//                        "                dir=\"rtl\"\n" +
+//                        "                [(ngModel)]=\"#LowerCase." + field.getName().getNames().get("en") + "\"\n" +
+//                        "                mode=\"day\"\n" +
+//                        "                placeholder=\"تاریخ\"\n" +
+//                        "                theme=\"dp-material\">\n" +
+//                        "          </dp-date-picker>\n");
+//            } else if (field.getFieldType().getType().toLowerCase().contains("DropDown".toLowerCase())) {
+//
+//                content.append("          <p-dropdown [options]=\"" + field.getName().getNames().get("en") + "options\" dataKey=\"value\" [(ngModel)]=\"#LowerCase." + field.getName().getNames().get("en") + "\" optionLabel=\"label\" dataKey=\"value\" ></p-dropdown>\n");
+//            } else if (NicicoGenerator.getBaseTypes().contains(field.getFieldType().getType())) {
+//                content.append("          <input pInputText type=\"text\" [(ngModel)]=\"#LowerCase." + field.getName().getNames().get("en") + "\"");
+//                if (GeneratorTools.isInteger(field.getFieldType().getType())) {
+//                    content.append(" pKeyFilter=\"int\" ");
+//                }
+//                content.append(" >\n");
+//            } else {
+//                content.append("          <p-dropdown [options]=\"" + field.getName().getNames().get("en") + "List\" [(ngModel)]=\"#LowerCase." + field.getName().getNames().get("en") + "\" optionLabel=\"" + entityLabels.get(v) + "\"  dataKey=\"value\" ></p-dropdown>\n");
+//            }
+//            content.append("        </div>\n");
+//            content.append(
+//                    "        <div class=\"col-lg-4\">\n" +
+//                            "\n" +
+//                            "        </div>\n");
+//            content.append("    </div>\n");
+//
+//        });
+//
+//        fields.forEach((k, v) -> {
+//            content.append(
+//                    "      <div class=\"row\" style=\"direction: rtl\">\n");
+//            content.append("        <div class=\"col-lg-4\">\n" +
+//                    "\n" +
+//                    "       " + farsiFieldsNames.get(k) + "\n" +
+//                    "        </div>\n");
+//            content.append("        <div class=\"col-lg-4\" style=\"text-align: right;\">\n");
+//
+//
+//            if (v.toLowerCase().contains("Date".toLowerCase())) {
+//                content.append("        <dp-date-picker \n" +
+//                        "                dir=\"rtl\"\n" +
+//                        "                [(ngModel)]=\"#LowerCase." + k + "\"\n" +
+//                        "                mode=\"day\"\n" +
+//                        "                placeholder=\"تاریخ\"\n" +
+//                        "                theme=\"dp-material\">\n" +
+//                        "          </dp-date-picker>\n");
+//            } else if (v.toLowerCase().contains("DropDown".toLowerCase())) {
+//
+//                content.append("          <p-dropdown [options]=\"" + k + "options\" dataKey=\"value\" [(ngModel)]=\"#LowerCase." + k + "\" optionLabel=\"label\" dataKey=\"value\" ></p-dropdown>\n");
+//            } else if (NicicoGenerator.getBaseTypes().contains(v)) {
+//                content.append("          <input pInputText type=\"text\" [(ngModel)]=\"#LowerCase." + k + "\"");
+//                if (GeneratorTools.isInteger(v)) {
+//                    content.append(" pKeyFilter=\"int\" ");
+//                }
+//                content.append(" >\n");
+//            } else {
+//                content.append("          <p-dropdown [options]=\"" + k + "List\" [(ngModel)]=\"#LowerCase." + k + "\" optionLabel=\"" + entityLabels.get(v) + "\"  dataKey=\"value\" ></p-dropdown>\n");
+//            }
+//            content.append("        </div>\n");
+//            content.append(
+//                    "        <div class=\"col-lg-4\">\n" +
+//                            "\n" +
+//                            "        </div>\n");
+//            content.append("    </div>\n");
+//
+//        });
         content.append(
                 "      <div class=\"row\" style=\"margin-top: 30px;\">\n" +
                         "        <div class=\"col-lg-12\">\n" +
@@ -381,9 +538,14 @@ public class FrontGenerator {
                         "          <ng-template pTemplate=\"header\">\n" +
                         "            <tr>\n");
         content.append("              <th colspan=\"1\">#</th>\n");
-        fields.forEach((k, v) -> {
-            content.append("              <th colspan=\"2\">").append(farsiFieldsNames.get(k)).append("</th>\n");
+
+        entityFieldDefinitionList.forEach(field -> {
+            content.append("              <th colspan=\"2\">").append(field.getName().getNames().get("fa")).append("</th>\n");
         });
+
+//        fields.forEach((k, v) -> {
+//            content.append("              <th colspan=\"2\">").append(farsiFieldsNames.get(k)).append("</th>\n");
+//        });
         content.append("              <th colspan=\"2\">ویرایش</th>\n");
         content.append("              <th colspan=\"2\">حذف</th>\n");
         content.append("            </tr>\n" +
@@ -391,14 +553,24 @@ public class FrontGenerator {
                 "          <ng-template pTemplate=\"body\" let-item let-i=\"rowIndex\">\n" +
                 "            <tr>\n");
         content.append("              <td colspan=\"1\">{{i+1}}</td>\n");
-        fields.forEach((k, v) -> {
-            if (v.toLowerCase().contains("Date".toLowerCase())) {
-                content.append("              <td colspan=\"2\">{{item." + k + " | jalalitime }} </td>\n");
+
+        entityFieldDefinitionList.forEach(field -> {
+            if (field.getFieldType().getType().toLowerCase().contains("Date".toLowerCase())) {
+                content.append("              <td colspan=\"2\">{{item." + field.getName().getNames().get("en") + " | jalalitime }} </td>\n");
 //                content.append("              <td colspan=\"2\">{{item." + k + "}} </td>\n");
             } else {
-                content.append("              <td colspan=\"2\">{{item." + k + "}} </td>\n");
+                content.append("              <td colspan=\"2\">{{item." + field.getName().getNames().get("en") + "}} </td>\n");
             }
         });
+
+//        fields.forEach((k, v) -> {
+//            if (v.toLowerCase().contains("Date".toLowerCase())) {
+//                content.append("              <td colspan=\"2\">{{item." + k + " | jalalitime }} </td>\n");
+////                content.append("              <td colspan=\"2\">{{item." + k + "}} </td>\n");
+//            } else {
+//                content.append("              <td colspan=\"2\">{{item." + k + "}} </td>\n");
+//            }
+//        });
         content.append("              <td colspan=\"2\">\n" +
                 "               <button type=\"button\" (click)=\"edit(item)\" class=\"btn btn-info\">ویرایش</button>\n" +
                 "              </td>\n");
@@ -420,15 +592,15 @@ public class FrontGenerator {
                 "  </div>\n" +
                 "</div>\n");
         String result = content.toString();
-        result = result.replace("#LowerCase", entityName.toLowerCase());
-        result = result.replace("#entity", entityName);
-        result = result.replace("#FarsiName", entityFarsiName);
+        result = result.replace("#LowerCase", entityDefinition.getName().getNames().get("en").toLowerCase());
+        result = result.replace("#entity", entityDefinition.getName().getNames().get("en"));
+        result = result.replace("#FarsiName", entityDefinition.getName().getNames().get("fa"));
 
         System.out.printf(result);
-        path += "src\\app\\" + GeneratorTools.camelToDashedSnake(entityName).toLowerCase() + "\\";
+        path += "src\\app\\" + GeneratorTools.camelToDashedSnake(entityDefinition.getName().getNames().get("en")).toLowerCase() + "\\";
         File file = new File(path);
         file.mkdirs();
-        try (PrintStream out = new PrintStream(new FileOutputStream(path + "/" + GeneratorTools.camelToSnake(entityName).toLowerCase() + ".component.html"))) {
+        try (PrintStream out = new PrintStream(new FileOutputStream(path + "/" + GeneratorTools.camelToSnake(entityDefinition.getName().getNames().get("en")).toLowerCase() + ".component.html"))) {
             out.print(result);
         }
         return result;
