@@ -176,7 +176,7 @@ public class NicicoGenerator {
         }
 
         if (checkGeneration("generate.properties")) {
-            generateApplicationDotPropertiesFile(resourcePath.getPath(), dataSourceUrl, dataSourceUsername, dataSourcePassword, contextPath, portNumber);
+            generateApplicationDotPropertiesFile(resourcePath.getPath(), dataSourceUrl, dataSourceUsername, dataSourcePassword, contextPath, portNumber, basePackage);
         }
 
 
@@ -228,7 +228,7 @@ public class NicicoGenerator {
 
                 FrontGenerator.generateEntityComponent(entityNameList, frontProjectPath, entityEnglishName, entityFarsiName, entity.getEntityFieldDefinitionList());
                 FrontGenerator.generateEntityService(frontProjectPath, entityEnglishName);
-                FrontGenerator.generateEntityHtmlView(frontProjectPath, systemDefinition, entity, entity.getEntityFieldDefinitionList());
+                FrontGenerator.generateEntityHtmlView(frontProjectPath, systemDefinition, entity, entityLabels, entity.getEntityFieldDefinitionList());
 
 
             } catch (FileNotFoundException e) {
@@ -240,6 +240,7 @@ public class NicicoGenerator {
         FrontGenerator.refactorAppModule(frontProjectPath, entityNameList);
         FrontGenerator.generateRouter(frontProjectPath, entityNameList);
         FrontGenerator.generateSidebarComponent(frontProjectPath, entityNameList, farsiNames);
+        FrontGenerator.generateSidebarComponentView(frontProjectPath, systemDefinition.getFrontendDefinition().getProjectFarsiName());
         FrontGenerator.generateProxyConf(frontProjectPath, contextPath, portNumber);
         FrontGenerator.generateEnvironment(frontProjectPath, contextPath);
         FrontGenerator.generateProductionEnvironment(frontProjectPath, contextPath);
@@ -696,10 +697,6 @@ public class NicicoGenerator {
                 "            <artifactId>spring-boot-starter-security</artifactId>\n" +
                 "        </dependency>\n" +
                 "        <dependency>\n" +
-                "            <groupId>org.springframework.ws</groupId>\n" +
-                "            <artifactId>spring-ws-core</artifactId>\n" +
-                "        </dependency>\n" +
-                "        <dependency>\n" +
                 "            <groupId>org.springframework.boot</groupId>\n" +
                 "            <artifactId>spring-boot-starter-web</artifactId>\n" +
                 "        </dependency>\n" +
@@ -754,28 +751,6 @@ public class NicicoGenerator {
                 "            <plugin>\n" +
                 "                <groupId>org.springframework.boot</groupId>\n" +
                 "                <artifactId>spring-boot-maven-plugin</artifactId>\n" +
-                "            </plugin>\n" +
-                "            <plugin>\n" +
-                "                <groupId>org.apache.maven.plugins</groupId>\n" +
-                "                <artifactId>maven-dependency-plugin</artifactId>\n" +
-                "                <executions>\n" +
-                "                    <execution>\n" +
-                "                        <id>unpack</id>\n" +
-                "                        <phase>package</phase>\n" +
-                "                        <goals>\n" +
-                "                            <goal>unpack</goal>\n" +
-                "                        </goals>\n" +
-                "                        <configuration>\n" +
-                "                            <artifactItems>\n" +
-                "                                <artifactItem>\n" +
-                "                                    <groupId>${project.groupId}</groupId>\n" +
-                "                                    <artifactId>${project.artifactId}</artifactId>\n" +
-                "                                    <version>${project.version}</version>\n" +
-                "                                </artifactItem>\n" +
-                "                            </artifactItems>\n" +
-                "                        </configuration>\n" +
-                "                    </execution>\n" +
-                "                </executions>\n" +
                 "            </plugin>\n" +
                 "        </plugins>\n" +
                 "    </build>\n" +
@@ -2936,7 +2911,8 @@ public class NicicoGenerator {
                                                                String dataSourceUserName,
                                                                String dataSourcePassword,
                                                                String contextPath,
-                                                               String portNumber) throws FileNotFoundException {
+                                                               String portNumber,
+                                                               String basePackage) throws FileNotFoundException {
         String content = "spring.datasource.url=" + datasourceUrl + "\n" +
                 "spring.datasource.username=" + dataSourceUserName + "\n" +
                 "spring.datasource.password=" + dataSourcePassword + "\n" +
@@ -2945,11 +2921,11 @@ public class NicicoGenerator {
                 "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL5InnoDBDialect\n" +
                 "spring.jpa.properties.hibernate.dialect.storage_engine=innodb\n" +
                 "\n" +
-                "server.servlet.context-path=" + contextPath + "\n" +
+                "server.servlet.context-path=/" + contextPath + "\n" +
                 "server.port=" + portNumber + "\n" +
                 "\n" +
                 "logging.file=target/logs/application.log\n" +
-                "logging.level.de.larmic=DEBUG";
+                "logging.level." +  basePackage + "=INFO";
 
         File file = new File(path);
         file.mkdirs();

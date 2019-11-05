@@ -53,7 +53,7 @@ public class FrontGenerator {
         path += "proxy.conf.json";
         File file = new File(path);
         String content = "{\n" +
-                "  \"#contextPath\": {\n" +
+                "  \"/#contextPath\": {\n" +
                 "    \"target\": \"http://localhost:#backendPort/\",\n" +
                 "    \"secure\": false,\n" +
                 "    \"logLevel\" : \"debug\"\n" +
@@ -396,7 +396,7 @@ public class FrontGenerator {
 
     }
 
-    public static String generateEntityHtmlView(String path, SystemDefinition systemDefinition, EntityDefinition entityDefinition, List<EntityFieldDefinition> entityFieldDefinitionList) throws FileNotFoundException {
+    public static String generateEntityHtmlView(String path, SystemDefinition systemDefinition, EntityDefinition entityDefinition, Map<String, String> entityLabels, List<EntityFieldDefinition> entityFieldDefinitionList) throws FileNotFoundException {
         StringBuilder content = new StringBuilder("<p-toast [style]=\"{marginTop: '30px'}\" position=\"top-center\" ></p-toast>\n" +
                 "<div class=\"main-content\">\n" +
                 "\n" +
@@ -436,7 +436,7 @@ public class FrontGenerator {
                 content.append(" >\n");
             } else {
                 List<String> labelList = systemDefinition.getBackendDefinition().getEntityDefinitionList().stream().filter(e -> e.getName().getNames().get("en").equals(field.getFieldType().getType())).map(EntityDefinition::getLabel).collect(Collectors.toList());
-                content.append("          <p-dropdown [options]=\"" + field.getName().getNames().get("en") + "List\" [(ngModel)]=\"#LowerCase." + field.getName().getNames().get("en") + "\" optionLabel=\"" +  labelList.get(0) + "\"  dataKey=\"value\" ></p-dropdown>\n");
+                content.append("          <p-dropdown [options]=\"" + field.getName().getNames().get("en") + "List\" [(ngModel)]=\"#LowerCase." + field.getName().getNames().get("en") + "\" optionLabel=\"" +  labelList.get(0) + "\"  dataKey=\"id\" ></p-dropdown>\n");
             }
             content.append("        </div>\n");
             content.append(
@@ -445,84 +445,6 @@ public class FrontGenerator {
                             "        </div>\n");
             content.append("    </div>\n");
         });
-//
-//        entityFieldDefinitionList.forEach(field -> {
-//            content.append(
-//                    "      <div class=\"row\" style=\"direction: rtl\">\n");
-//            content.append("        <div class=\"col-lg-4\">\n" +
-//                    "\n" +
-//                    "       " + field.getName().getNames().get("fa") + "\n" +
-//                    "        </div>\n");
-//            content.append("        <div class=\"col-lg-4\" style=\"text-align: right;\">\n");
-//
-//
-//            if (field.getFieldType().getType().toLowerCase().contains("Date".toLowerCase())) {
-//                content.append("        <dp-date-picker \n" +
-//                        "                dir=\"rtl\"\n" +
-//                        "                [(ngModel)]=\"#LowerCase." + field.getName().getNames().get("en") + "\"\n" +
-//                        "                mode=\"day\"\n" +
-//                        "                placeholder=\"تاریخ\"\n" +
-//                        "                theme=\"dp-material\">\n" +
-//                        "          </dp-date-picker>\n");
-//            } else if (field.getFieldType().getType().toLowerCase().contains("DropDown".toLowerCase())) {
-//
-//                content.append("          <p-dropdown [options]=\"" + field.getName().getNames().get("en") + "options\" dataKey=\"value\" [(ngModel)]=\"#LowerCase." + field.getName().getNames().get("en") + "\" optionLabel=\"label\" dataKey=\"value\" ></p-dropdown>\n");
-//            } else if (NicicoGenerator.getBaseTypes().contains(field.getFieldType().getType())) {
-//                content.append("          <input pInputText type=\"text\" [(ngModel)]=\"#LowerCase." + field.getName().getNames().get("en") + "\"");
-//                if (GeneratorTools.isInteger(field.getFieldType().getType())) {
-//                    content.append(" pKeyFilter=\"int\" ");
-//                }
-//                content.append(" >\n");
-//            } else {
-//                content.append("          <p-dropdown [options]=\"" + field.getName().getNames().get("en") + "List\" [(ngModel)]=\"#LowerCase." + field.getName().getNames().get("en") + "\" optionLabel=\"" + entityLabels.get(v) + "\"  dataKey=\"value\" ></p-dropdown>\n");
-//            }
-//            content.append("        </div>\n");
-//            content.append(
-//                    "        <div class=\"col-lg-4\">\n" +
-//                            "\n" +
-//                            "        </div>\n");
-//            content.append("    </div>\n");
-//
-//        });
-//
-//        fields.forEach((k, v) -> {
-//            content.append(
-//                    "      <div class=\"row\" style=\"direction: rtl\">\n");
-//            content.append("        <div class=\"col-lg-4\">\n" +
-//                    "\n" +
-//                    "       " + farsiFieldsNames.get(k) + "\n" +
-//                    "        </div>\n");
-//            content.append("        <div class=\"col-lg-4\" style=\"text-align: right;\">\n");
-//
-//
-//            if (v.toLowerCase().contains("Date".toLowerCase())) {
-//                content.append("        <dp-date-picker \n" +
-//                        "                dir=\"rtl\"\n" +
-//                        "                [(ngModel)]=\"#LowerCase." + k + "\"\n" +
-//                        "                mode=\"day\"\n" +
-//                        "                placeholder=\"تاریخ\"\n" +
-//                        "                theme=\"dp-material\">\n" +
-//                        "          </dp-date-picker>\n");
-//            } else if (v.toLowerCase().contains("DropDown".toLowerCase())) {
-//
-//                content.append("          <p-dropdown [options]=\"" + k + "options\" dataKey=\"value\" [(ngModel)]=\"#LowerCase." + k + "\" optionLabel=\"label\" dataKey=\"value\" ></p-dropdown>\n");
-//            } else if (NicicoGenerator.getBaseTypes().contains(v)) {
-//                content.append("          <input pInputText type=\"text\" [(ngModel)]=\"#LowerCase." + k + "\"");
-//                if (GeneratorTools.isInteger(v)) {
-//                    content.append(" pKeyFilter=\"int\" ");
-//                }
-//                content.append(" >\n");
-//            } else {
-//                content.append("          <p-dropdown [options]=\"" + k + "List\" [(ngModel)]=\"#LowerCase." + k + "\" optionLabel=\"" + entityLabels.get(v) + "\"  dataKey=\"value\" ></p-dropdown>\n");
-//            }
-//            content.append("        </div>\n");
-//            content.append(
-//                    "        <div class=\"col-lg-4\">\n" +
-//                            "\n" +
-//                            "        </div>\n");
-//            content.append("    </div>\n");
-//
-//        });
         content.append(
                 "      <div class=\"row\" style=\"margin-top: 30px;\">\n" +
                         "        <div class=\"col-lg-12\">\n" +
@@ -543,9 +465,6 @@ public class FrontGenerator {
             content.append("              <th colspan=\"2\">").append(field.getName().getNames().get("fa")).append("</th>\n");
         });
 
-//        fields.forEach((k, v) -> {
-//            content.append("              <th colspan=\"2\">").append(farsiFieldsNames.get(k)).append("</th>\n");
-//        });
         content.append("              <th colspan=\"2\">ویرایش</th>\n");
         content.append("              <th colspan=\"2\">حذف</th>\n");
         content.append("            </tr>\n" +
@@ -557,20 +476,13 @@ public class FrontGenerator {
         entityFieldDefinitionList.forEach(field -> {
             if (field.getFieldType().getType().toLowerCase().contains("Date".toLowerCase())) {
                 content.append("              <td colspan=\"2\">{{item." + field.getName().getNames().get("en") + " | jalalitime }} </td>\n");
-//                content.append("              <td colspan=\"2\">{{item." + k + "}} </td>\n");
-            } else {
+            } else if(NicicoGenerator.getBaseTypes().contains(field.getFieldType().getType()) || field.getFieldType().getType().toLowerCase().contains("DropDown".toLowerCase())) {
                 content.append("              <td colspan=\"2\">{{item." + field.getName().getNames().get("en") + "}} </td>\n");
+            } else {
+                content.append("              <td colspan=\"2\">{{item." + field.getName().getNames().get("en") + "." + entityLabels.get(field.getFieldType().getType()) + "}} </td>\n");
             }
         });
 
-//        fields.forEach((k, v) -> {
-//            if (v.toLowerCase().contains("Date".toLowerCase())) {
-//                content.append("              <td colspan=\"2\">{{item." + k + " | jalalitime }} </td>\n");
-////                content.append("              <td colspan=\"2\">{{item." + k + "}} </td>\n");
-//            } else {
-//                content.append("              <td colspan=\"2\">{{item." + k + "}} </td>\n");
-//            }
-//        });
         content.append("              <td colspan=\"2\">\n" +
                 "               <button type=\"button\" (click)=\"edit(item)\" class=\"btn btn-info\">ویرایش</button>\n" +
                 "              </td>\n");
@@ -786,6 +698,23 @@ public class FrontGenerator {
             out.print(result);
         }
         return result;
+    }
+
+
+    public static String generateSidebarComponentView(String path, String projectName) throws IOException {
+
+        path += "src\\app\\components\\sidebar\\sidebar.component.html";
+        String content = new String(Files.readAllBytes(Paths.get(path)));
+
+        content = content.replaceAll("nicico-project-name", projectName);
+
+        File file = new File(path);
+        file.delete();
+        try (PrintStream out = new PrintStream(new FileOutputStream(path))) {
+            out.print(content);
+        }
+        return content;
+
     }
 
 
