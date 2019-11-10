@@ -93,7 +93,7 @@ public class NicicoGenerator {
         systemDefinition.getBackendDefinition().getEntityDefinitionList().forEach(e -> {
             String entityEnName = e.getName().getNames().get("en");
             String entityFaName = e.getName().getNames().get("fa");
-            entityLabels.put(entityEnName, entityFaName);
+            entityLabels.put(entityEnName, e.getLabel());
         });
 
         FrontGenerator frontGenerator = new FrontGenerator();
@@ -1384,6 +1384,9 @@ public class NicicoGenerator {
             if (getBaseTypes().contains(fieldType)) {
                 content.append("\n                                      @RequestParam(value = \"").append(fieldEnglishName).append("\", required = false) ");
                 content.append(fieldType).append(" ").append(fieldEnglishName).append(",");
+            } else if(fieldType.contains("DropDown")) {
+                content.append("\n                                      @RequestParam(value = \"").append(fieldEnglishName).append("\", required = false) ");
+                content.append("Long").append(" ").append(fieldEnglishName).append(",");
             }
         }
 
@@ -1419,6 +1422,11 @@ public class NicicoGenerator {
             String fieldFarsiName = field.getName().getNames().get("fa");
             String fieldType = field.getFieldType().getType();
             if (getBaseTypes().contains(fieldType)) {
+                String firstCharFieldName = fieldEnglishName.substring(0, 1);
+                String upperCaseCharFieldName = fieldEnglishName.replaceFirst(firstCharFieldName, firstCharFieldName.toUpperCase());
+                content.append("            #entity.set" + upperCaseCharFieldName + "(" + fieldEnglishName + "); \n");
+            }
+            else if (fieldType.contains("DropDown")) {
                 String firstCharFieldName = fieldEnglishName.substring(0, 1);
                 String upperCaseCharFieldName = fieldEnglishName.replaceFirst(firstCharFieldName, firstCharFieldName.toUpperCase());
                 content.append("            #entity.set" + upperCaseCharFieldName + "(" + fieldEnglishName + "); \n");

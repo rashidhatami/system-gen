@@ -3,12 +3,12 @@
     "databaseConnection": {
       "datasourceUrl":"jdbc:mysql://127.0.0.1:3306/employment?useUnicode=yes&characterEncoding=UTF8",
       "datasourceUsername":"root",
-      "datasourcePassword":"adldoost@2015"
+      "datasourcePassword":"123a123A"
     },
     "contextPath":"employment",
     "backendPortNumber":7393,
     "basePackage":"com.adldoost.generator.employment",
-    "targetPath":"D:\\\\adldoost\\personal\\spl-target\\employment\\backend\\",
+    "targetPath":"D:\\\\adldoost\\personal\\spl-target\\980815\\employment\\backend\\",
     "mavenConfig":{
       "projectName":"employment",
       "projectDescription":"employment backend",
@@ -81,7 +81,7 @@
   "frontendDefinition":{
     "projectName":"employment-front",
     "projectFarsiName":"تست تولید استخدام",
-    "targetPath":"D:\\\\adldoost\\personal\\spl-target\\employment\\front\\",
+    "targetPath":"D:\\\\adldoost\\personal\\spl-target\\980815\\employment\\front\\",
     "entityDefinitionList":[
       {
         "name":{

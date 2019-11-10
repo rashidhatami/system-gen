@@ -111,13 +111,12 @@ public class FrontGenerator {
 
         fieldDefinitionList.forEach(field -> {
             if (entitiesList.contains(field.getFieldType().getType())) {
-                content.append("import {").append(field.getFieldType().getType()).append("Service} from '../").append(field.getFieldType().getType().toLowerCase()).append("/").append(field.getFieldType().getType().toLowerCase()).append(".service'; \n");
+                if(!field.getFieldType().getType().equals(entityName)) {
+                    content.append("import {").append(field.getFieldType().getType()).append("Service} from '../").append(field.getFieldType().getType().toLowerCase()).append("/").append(field.getFieldType().getType().toLowerCase()).append(".service'; \n");
+                }
             }
         });
 
-//        fields.forEach((k, v) -> {
-//
-//        });
         content.append("import {ConfirmationService} from 'primeng/api';\n" +
                 "\n" +
                 "@Component({\n" +
@@ -133,15 +132,12 @@ public class FrontGenerator {
 
         fieldDefinitionList.forEach(field -> {
             if (entitiesList.contains(field.getFieldType().getType())) {
-                content.append("                private " + field.getFieldType().getType().toLowerCase() + "Service: " + field.getFieldType().getType() + "Service,\n");
+                if(!field.getFieldType().getType().equals(entityName)) {
+                    content.append("                private " + field.getFieldType().getType().toLowerCase() + "Service: " + field.getFieldType().getType() + "Service,\n");
+                }
             }
         });
 
-//        fields.forEach((k, v) -> {
-//            if (entitiesList.contains(v)) {
-//                content.append("                private " + v.toLowerCase() + "Service: " + v + "Service,\n");
-//            }
-//        });
         content.append("              private confirmationService: ConfirmationService) { \n" +
                 "\n" +
                 "   }\n" +
@@ -157,41 +153,32 @@ public class FrontGenerator {
                 } catch (JsonProcessingException e) {
                     e.printStackTrace();
                 }
-                content.append("   " + field.getName().getNames().get("en") + "options = " + json.replace("\"", "'") + "\n");
+                content.append("  " + field.getName().getNames().get("en") + "options = " + json.replace("\"", "'") + ";\n");
             }
         });
 
-//        fields.forEach((k, v) -> {
-//            if (v.toLowerCase().contains("DropDown".toLowerCase())) {
-//                ObjectMapper objectMapper = new ObjectMapper();
-//                int start = v.indexOf("[");
-//                int end = v.indexOf("]");
-//                String json = v.substring(start, end + 1);
-//                try {
-//                    DropDownType[] list = objectMapper.readValue(json, DropDownType[].class);
-//                } catch (JsonProcessingException e) {
-//                    e.printStackTrace();
-//                }
-//                content.append("   " + k + "options = " + json.replace("\"", "'") + "\n");
-//            }
-//        });
-
         content.append(
-                "   #LowerCase: any;\n" +
-                        "\n" +
-                        "\n" +
-                        "  items = {data: [], count : 0};\n");
+                "  #LowerCase: any;\n");
+
+        content.append("  search").append(entityName).append(": {");
+        fieldDefinitionList.forEach(field -> {
+            content.append(field.getName().getNames().get("en")).append(": any, ");
+        });
+        content.setLength(content.length() - 2);
+        content.append("} = {");
+        fieldDefinitionList.forEach(field -> {
+            content.append(field.getName().getNames().get("en")).append(": null, ");
+        });
+        content.setLength(content.length() - 1);
+        content.append("};\n\n");
+
+        content.append("  items = {data: [], count : 0};\n");
 
         fieldDefinitionList.forEach(field -> {
             if (entitiesList.contains(field.getFieldType().getType())) {
                 content.append("  ").append(field.getName().getNames().get("en")).append("List = [];\n");
             }
         });
-//        fields.forEach((k, v) -> {
-//            if (entitiesList.contains(v)) {
-//                content.append("  " + k + "List = [];\n");
-//            }
-//        });
 
         content.append("\n" +
                 "  ngOnInit() {\n");
@@ -201,11 +188,6 @@ public class FrontGenerator {
             }
         });
 
-//        fields.forEach((k, v) -> {
-//            if (v.contains("DropDown")) {
-//                content.append("    this." + k + "options = this.commonService.preparePureListToDropdown(this." + k + "options);\n");
-//            }
-//        });
         content.append("    this.#LowerCase =  new Object();\n" +
                 "    this.#LowerCaseService.list(new QueryOptions(), 'search').subscribe(res => {\n" +
                 "      console.log('list call res', res);\n" +
@@ -214,21 +196,34 @@ public class FrontGenerator {
 
         fieldDefinitionList.forEach(field -> {
             if (entitiesList.contains(field.getFieldType().getType())) {
-                content.append("        this.fetch" + field.getName().getNames().get("en") + "List();\n");
+                content.append("        this.fetch" + field.getFieldType().getType() + "List();\n");
             }
         });
 //        fields.forEach((k, v) -> {
 //
 //        });
-        content.append("  }\n");
+        content.append("  }\n\n");
 
         content.append("  loadItems(event: any) {\n" +
-                "    if (!event) {\n" +
+                "    if (!event || !event.first) {\n" +
                 "      event = {first : 0, rows : 20};\n" +
                 "    }\n" +
                 "    let query = new QueryOptions();\n" +
-                "    query.options = [{key: 'firstIndex', value: event.first}, {key: 'pageSize', value: event.rows}];\n" +
-                "    this.#LowerCaseService.list(query, 'search').subscribe(res => {\n" +
+                "    query.options = [{key: 'firstIndex', value: event.first}, {key: 'pageSize', value: event.rows}];\n");
+
+        fieldDefinitionList.forEach(field -> {
+            if(NicicoGenerator.getBaseTypes().contains(field.getFieldType().getType())) {
+                content.append("    if (this.search" + entityName + "." + field.getName().getNames().get("en") + ") {\n");
+                content.append("        query.options.push({key: '" + field.getName().getNames().get("en") + "', value: this.search" + entityName + "." + field.getName().getNames().get("en") + "});\n");
+                content.append("    }\n");
+            } else if(field.getFieldType().getType().contains("DropDown")) {
+                content.append("    if (this.search" + entityName + "." + field.getName().getNames().get("en")  + " && this.search" + entityName + "." + field.getName().getNames().get("en") + ".value) {\n");
+                content.append("        query.options.push({key: '" + field.getName().getNames().get("en") + "', value: this.search" + entityName + "." + field.getName().getNames().get("en") + ".value" + "});\n");
+                content.append("    }\n");
+            }
+        });
+
+        content.append("\n    this.#LowerCaseService.list(query, 'search').subscribe(res => {\n" +
                 "      this.items = res;\n" +
                 "    });\n" +
                 "  }\n\n");
@@ -240,25 +235,11 @@ public class FrontGenerator {
                         "    let query = new QueryOptions();\n" +
                         "    query.options = [{key: 'firstIndex', value: event.first}, {key: 'pageSize', value: event.rows}];\n" +
                         "    this." + field.getFieldType().getType().toLowerCase() + "Service.list(query, 'search').subscribe(res => {\n" +
-                        "      this." + field.getFieldType().getType() + "List = res.data;\n" +
+                        "      this." + field.getFieldType().getType().toLowerCase() + "List = res.data;\n" +
                         "    });\n" +
                         "  }\n\n");
             }
         });
-
-
-//        fields.forEach((k, v) -> {
-//            if (entitiesList.contains(v)) {
-//                content.append("  fetch" + v + "List() {\n" +
-//                        "    let event = {first : 0, rows : 20};\n" +
-//                        "    let query = new QueryOptions();\n" +
-//                        "    query.options = [{key: 'firstIndex', value: event.first}, {key: 'pageSize', value: event.rows}];\n" +
-//                        "    this." + v.toLowerCase() + "Service.list(query, 'search').subscribe(res => {\n" +
-//                        "      this." + k + "List = res.data;\n" +
-//                        "    });\n" +
-//                        "  }\n\n");
-//            }
-//        });
 
         content.append("  save() {\n");
         fieldDefinitionList.forEach(field -> {
@@ -268,13 +249,7 @@ public class FrontGenerator {
                 content.append("    }\n");
             }
         });
-//        fields.forEach((k, v) -> {
-//            if (v.contains("DropDown")) {
-//                content.append("    if(this.#LowerCase." + k + ") { \n");
-//                content.append("        this.#LowerCase." + k + " = this.#LowerCase." + k + ".value;\n");
-//                content.append("    }\n");
-//            }
-//        });
+
         content.append("    this.#LowerCaseService.create(this.#LowerCase, 'save').subscribe(res => {\n" +
                 "      this.#LowerCase = res;\n" +
                 "      this.loadItems(null);\n" +
@@ -299,11 +274,7 @@ public class FrontGenerator {
                 content.append("    this.#LowerCase." + field.getName().getNames().get("en") + " = this." + field.getName().getNames().get("en") + "options.filter(v => v.value == this.#LowerCase." + field.getName().getNames().get("en") + ")[0];\n");
             }
         });
-//        fields.forEach((k, v) -> {
-//            if (v.contains("DropDown")) {
-//                content.append("    this.#LowerCase." + k + " = this." + k + "options.filter(v => v.value == this.#LowerCase." + k + ")[0];\n");
-//            }
-//        });
+
         content.append("    this.convertDateFields();\n" +
                 "  }\n" +
                 "\n" +
@@ -320,11 +291,6 @@ public class FrontGenerator {
             }
         });
 
-//        fields.forEach((k, v) -> {
-//            if (k.toLowerCase().contains("date")) {
-//                content.append("            this.#LowerCase." + k + " = moment(this.#LowerCase." + k + ")\n");
-//            }
-//        });
         content.append("  }\n" +
                 "\n" +
                 "   confirm(item) {\n" +
@@ -397,6 +363,8 @@ public class FrontGenerator {
     }
 
     public static String generateEntityHtmlView(String path, SystemDefinition systemDefinition, EntityDefinition entityDefinition, Map<String, String> entityLabels, List<EntityFieldDefinition> entityFieldDefinitionList) throws FileNotFoundException {
+
+
         StringBuilder content = new StringBuilder("<p-toast [style]=\"{marginTop: '30px'}\" position=\"top-center\" ></p-toast>\n" +
                 "<div class=\"main-content\">\n" +
                 "\n" +
@@ -435,8 +403,9 @@ public class FrontGenerator {
                 }
                 content.append(" >\n");
             } else {
+
                 List<String> labelList = systemDefinition.getBackendDefinition().getEntityDefinitionList().stream().filter(e -> e.getName().getNames().get("en").equals(field.getFieldType().getType())).map(EntityDefinition::getLabel).collect(Collectors.toList());
-                content.append("          <p-dropdown [options]=\"" + field.getName().getNames().get("en") + "List\" [(ngModel)]=\"#LowerCase." + field.getName().getNames().get("en") + "\" optionLabel=\"" +  labelList.get(0) + "\"  dataKey=\"id\" ></p-dropdown>\n");
+                content.append("          <p-dropdown [options]=\"" + field.getName().getNames().get("en") + "List\" [(ngModel)]=\"#LowerCase." + field.getName().getNames().get("en") + "\" optionLabel=\"" + labelList.get(0) + "\"  dataKey=\"id\" ></p-dropdown>\n");
             }
             content.append("        </div>\n");
             content.append(
@@ -467,8 +436,26 @@ public class FrontGenerator {
 
         content.append("              <th colspan=\"2\">ویرایش</th>\n");
         content.append("              <th colspan=\"2\">حذف</th>\n");
-        content.append("            </tr>\n" +
-                "          </ng-template>\n" +
+        content.append("            </tr>\n");
+        content.append("            <tr>\n" +
+                "              <th colspan=\"1\"><p-button label=\"جستجو\" (onClick)=\"loadItems($event)\" icon=\"pi pi-search\"></p-button></th>\n");
+        entityFieldDefinitionList.forEach(field -> {
+            if(NicicoGenerator.getBaseTypes().contains(field.getFieldType().getType())) {
+                content.append("              <th colspan=\"2\"><input pInputText [(ngModel)]=\"search" + entityDefinition.getName().getNames().get("en") + "." + field.getName().getNames().get("en") + "\"></th>\n");
+            } else if (field.getFieldType().getType().contains("DropDown")) {
+                content.append("          <th colspan=\"2\"> \n" +
+                        "               <p-dropdown [options]=\"" + field.getName().getNames().get("en") + "options\" dataKey=\"value\" [(ngModel)]=\"search" + entityDefinition.getName().getNames().get("en") + "." + field.getName().getNames().get("en") + "\" optionLabel=\"label\" dataKey=\"value\" ></p-dropdown>\n" +
+                        "           </th>\n");
+            } else {
+                content.append("<th colspan=\"2\"></th>\n");
+            }
+        });
+
+        content.append(
+                "              <th colspan=\"2\"></th>\n" +
+                        "              <th colspan=\"2\"></th>\n" +
+                        "            </tr>\n");
+        content.append("          </ng-template>\n" +
                 "          <ng-template pTemplate=\"body\" let-item let-i=\"rowIndex\">\n" +
                 "            <tr>\n");
         content.append("              <td colspan=\"1\">{{i+1}}</td>\n");
@@ -476,10 +463,14 @@ public class FrontGenerator {
         entityFieldDefinitionList.forEach(field -> {
             if (field.getFieldType().getType().toLowerCase().contains("Date".toLowerCase())) {
                 content.append("              <td colspan=\"2\">{{item." + field.getName().getNames().get("en") + " | jalalitime }} </td>\n");
-            } else if(NicicoGenerator.getBaseTypes().contains(field.getFieldType().getType()) || field.getFieldType().getType().toLowerCase().contains("DropDown".toLowerCase())) {
+            } else if (NicicoGenerator.getBaseTypes().contains(field.getFieldType().getType()) || field.getFieldType().getType().toLowerCase().contains("DropDown".toLowerCase())) {
                 content.append("              <td colspan=\"2\">{{item." + field.getName().getNames().get("en") + "}} </td>\n");
             } else {
-                content.append("              <td colspan=\"2\">{{item." + field.getName().getNames().get("en") + "." + entityLabels.get(field.getFieldType().getType()) + "}} </td>\n");
+                content.append("              <td colspan=\"2\">\n" +
+                        "              <span *ngIf = \"item." + field.getName().getNames().get("en") + "\">\n" +
+                        "                   {{item." + field.getName().getNames().get("en") + "." + entityLabels.get(field.getFieldType().getType()) + "}} \n" +
+                        "               </span>\n" +
+                        "               </td>\n");
             }
         });
 
