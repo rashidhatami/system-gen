@@ -8,7 +8,6 @@ import java.io.Serializable;
 public class EntityFieldDefinition implements Serializable {
 
     private GlobalizedName name;
-    private String farsiName;
     private FieldType fieldType;
     private Boolean nullable;
     private Integer length;
@@ -22,14 +21,6 @@ public class EntityFieldDefinition implements Serializable {
 
     public void setName(GlobalizedName name) {
         this.name = name;
-    }
-
-    public String getFarsiName() {
-        return farsiName;
-    }
-
-    public void setFarsiName(String farsiName) {
-        this.farsiName = farsiName;
     }
 
     public FieldType getFieldType() {

@@ -13,6 +13,7 @@ public class FieldType implements Serializable {
     private String options;//[{"label": "عدم توانایی فنی", "value": "1"},{"label": "مشکلات اخلاقی", "value": "2"}]
     private String optionLabel;//label
     private String optionValue;//value
+    private Integer colspan;
 
     public String getType() {
         return type;
@@ -60,5 +61,13 @@ public class FieldType implements Serializable {
 
     public void setOptionValue(String optionValue) {
         this.optionValue = optionValue;
+    }
+
+    public Integer getColspan() {
+        return colspan;
+    }
+
+    public void setColspan(Integer colspan) {
+        this.colspan = colspan;
     }
 }

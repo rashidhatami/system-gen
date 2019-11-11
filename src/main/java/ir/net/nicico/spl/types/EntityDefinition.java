@@ -9,7 +9,6 @@ import java.util.List;
 public class EntityDefinition implements Serializable {
 
     private GlobalizedName name;
-    private String farsiName;
     private String label;
     private List<EntityFieldDefinition> entityFieldDefinitionList;
     private Boolean hasForm;
@@ -20,14 +19,6 @@ public class EntityDefinition implements Serializable {
 
     public void setName(GlobalizedName name) {
         this.name = name;
-    }
-
-    public String getFarsiName() {
-        return farsiName;
-    }
-
-    public void setFarsiName(String farsiName) {
-        this.farsiName = farsiName;
     }
 
     public String getLabel() {

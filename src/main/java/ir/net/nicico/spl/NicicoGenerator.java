@@ -2,7 +2,6 @@ package ir.net.nicico.spl;
 
 
 import com.google.common.base.CaseFormat;
-import com.google.common.collect.Sets;
 import ir.net.nicico.spl.types.EntityDefinition;
 import ir.net.nicico.spl.types.EntityFieldDefinition;
 import ir.net.nicico.spl.types.GlobalizedName;
@@ -92,7 +91,7 @@ public class NicicoGenerator {
         LinkedHashMap<String, String> entityLabels = new LinkedHashMap<>();
         systemDefinition.getBackendDefinition().getEntityDefinitionList().forEach(e -> {
             String entityEnName = e.getName().getNames().get("en");
-            String entityFaName = e.getName().getNames().get("fa");
+//            String entityFaName = e.getName().getNames().get("fa");
             entityLabels.put(entityEnName, e.getLabel());
         });
 
@@ -167,118 +166,126 @@ public class NicicoGenerator {
         resourcePath.mkdirs();
 
 
-        if (checkGeneration("generate.pom")) {
-            generatePOMFile(rootPath.getPath(), projectName, projectDescription, artifcatId, groupId);
-        }
-
-        if (checkGeneration("generate.runner")) {
-            generateRunnerClass(sourcePackageTarget, basePackage, projectName);
-        }
-
-        if (checkGeneration("generate.properties")) {
-            generateApplicationDotPropertiesFile(resourcePath.getPath(), dataSourceUrl, dataSourceUsername, dataSourcePassword, contextPath, portNumber, basePackage);
-        }
-
-
-        if (checkGeneration("generate.config")) {
-            generateConfigPropertiesFile(resourcePath.getPath(), jwtKey, jwtExpiration);
-        }
-
-        if (checkGeneration("generate.errorcodes")) {
-            generateErrorCodeProperties(resourcePath.getPath());
-        }
-
-        if (checkGeneration("generate.security.config")) {
-            generateSecurityConfig(basePackage, securityPath.getPath());
-        }
-
-        if (checkGeneration("generate.security.roles")) {
-            generateAccessRoles(basePackage, securityPath.getPath());
-        }
-
-
-
-//        entityNameList.stream().forEach(entityName -> {
-        systemDefinition.getBackendDefinition().getEntityDefinitionList().forEach(entity -> {
-//            LinkedHashMap<String, String> fields = findFieldsForEntity(entityName);
-            String entityEnglishName = entity.getName().getNames().get("en");
-            String entityFarsiName = entity.getName().getNames().get("fa");
-            try {
-                if (checkGeneration("generate.entity")) {
-                    generateEntity(basePackage, entityEnglishName,entity.getEntityFieldDefinitionList() , modelPath.getPath());
-                }
-                if (checkGeneration("generate.dto")) {
-                    generateDto(basePackage, entityEnglishName, entity.getEntityFieldDefinitionList(), dtoPath.getPath(), validationEnabled);
-                }
-                if (checkGeneration("generate.dao")) {
-                    generateDao(basePackage, entityEnglishName, daoPath.getPath());
-                }
-                if (checkGeneration("generate.service")) {
-                    generateService(basePackage, entityEnglishName, servicePath.getPath());
-                }
-                if (checkGeneration("generate.general.service")) {
-                    //fill service package
-                    generateGeneralServiceInterface(servicePath.getPath(), basePackage);
-                    generateGeneralServiceImplClass(servicePath.getPath(), basePackage);
-                    generatePagedResultClass(servicePath.getPath(), basePackage);
-                }
-                if (checkGeneration("generate.rest")) {
-                    generateRestService(basePackage, entityEnglishName, entity.getEntityFieldDefinitionList(), restPath.getPath());
-                }
-
-                FrontGenerator.generateEntityComponent(entityNameList, frontProjectPath, entityEnglishName, entityFarsiName, entity.getEntityFieldDefinitionList());
-                FrontGenerator.generateEntityService(frontProjectPath, entityEnglishName);
-                FrontGenerator.generateEntityHtmlView(frontProjectPath, systemDefinition, entity, entityLabels, entity.getEntityFieldDefinitionList());
-
-
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
+        if(systemDefinition.getGenerateBackend() == null || systemDefinition.getGenerateBackend()) {
+            if (checkGeneration("generate.pom")) {
+                generatePOMFile(rootPath.getPath(), projectName, projectDescription, artifcatId, groupId);
             }
-        });
 
-//        });
-        FrontGenerator.refactorAppModule(frontProjectPath, entityNameList);
-        FrontGenerator.generateRouter(frontProjectPath, entityNameList);
-        FrontGenerator.generateSidebarComponent(frontProjectPath, entityNameList, farsiNames);
-        FrontGenerator.generateSidebarComponentView(frontProjectPath, systemDefinition.getFrontendDefinition().getProjectFarsiName());
-        FrontGenerator.generateProxyConf(frontProjectPath, contextPath, portNumber);
-        FrontGenerator.generateEnvironment(frontProjectPath, contextPath);
-        FrontGenerator.generateProductionEnvironment(frontProjectPath, contextPath);
+            if (checkGeneration("generate.runner")) {
+                generateRunnerClass(sourcePackageTarget, basePackage, projectName);
+            }
+
+            if (checkGeneration("generate.properties")) {
+                generateApplicationDotPropertiesFile(resourcePath.getPath(), dataSourceUrl, dataSourceUsername, dataSourcePassword, contextPath, portNumber, basePackage);
+            }
 
 
-        //fill common package
-        if (checkGeneration("generate.common")) {
-            generateBusinessExceptionCodeClass(commonPath.getPath(), basePackage);
-            generateConfigReaderUtilClass(commonPath.getPath(), basePackage);
-            generateAEFExceptionHandler(commonPath.getPath(), basePackage);
-            generateFarsiCodeReaderUtility(commonPath.getPath(), basePackage);
-            generateFarsiCodeReaderUtility(commonPath.getPath(), basePackage);
-            generateErrorCodeReaderUtilClass(commonPath.getPath(), basePackage);
-            generateRandomStringCodeUtility(commonPath.getPath(), basePackage);
-            generateRestErrorMessageClass(commonPath.getPath(), basePackage);
-            generateSecurityServiceExceptionClass(commonPath.getPath(), basePackage);
+            if (checkGeneration("generate.config")) {
+                generateConfigPropertiesFile(resourcePath.getPath(), jwtKey, jwtExpiration);
+            }
+
+            if (checkGeneration("generate.errorcodes")) {
+                generateErrorCodeProperties(resourcePath.getPath());
+            }
+
+            if (checkGeneration("generate.security.config")) {
+                generateSecurityConfig(basePackage, securityPath.getPath());
+            }
+
+            if (checkGeneration("generate.security.roles")) {
+                generateAccessRoles(basePackage, securityPath.getPath());
+            }
+
+
+            systemDefinition.getBackendDefinition().getEntityDefinitionList().forEach(entity -> {
+                String entityEnglishName = entity.getName().getNames().get("en");
+                String entityFarsiName = entity.getName().getNames().get("fa");
+                try {
+                    if (checkGeneration("generate.entity")) {
+                        generateEntity(basePackage, entityEnglishName, entity.getEntityFieldDefinitionList(), modelPath.getPath());
+                    }
+                    if (checkGeneration("generate.dto")) {
+                        generateDto(basePackage, entityEnglishName, entity.getEntityFieldDefinitionList(), dtoPath.getPath(), validationEnabled);
+                    }
+                    if (checkGeneration("generate.dao")) {
+                        generateDao(basePackage, entityEnglishName, daoPath.getPath());
+                    }
+                    if (checkGeneration("generate.service")) {
+                        generateService(basePackage, entityEnglishName, servicePath.getPath());
+                    }
+                    if (checkGeneration("generate.general.service")) {
+                        //fill service package
+                        generateGeneralServiceInterface(servicePath.getPath(), basePackage);
+                        generateGeneralServiceImplClass(servicePath.getPath(), basePackage);
+                        generatePagedResultClass(servicePath.getPath(), basePackage);
+                    }
+                    if (checkGeneration("generate.rest")) {
+                        generateRestService(basePackage, entityEnglishName, entity.getEntityFieldDefinitionList(), restPath.getPath());
+                    }
+
+
+                } catch (FileNotFoundException e) {
+                    e.printStackTrace();
+                }
+            });
+
+            //fill common package
+            if (checkGeneration("generate.common")) {
+                generateBusinessExceptionCodeClass(commonPath.getPath(), basePackage);
+                generateConfigReaderUtilClass(commonPath.getPath(), basePackage);
+                generateAEFExceptionHandler(commonPath.getPath(), basePackage);
+                generateFarsiCodeReaderUtility(commonPath.getPath(), basePackage);
+                generateFarsiCodeReaderUtility(commonPath.getPath(), basePackage);
+                generateErrorCodeReaderUtilClass(commonPath.getPath(), basePackage);
+                generateRandomStringCodeUtility(commonPath.getPath(), basePackage);
+                generateRestErrorMessageClass(commonPath.getPath(), basePackage);
+                generateSecurityServiceExceptionClass(commonPath.getPath(), basePackage);
+            }
+
+            //fill jwt package
+            if (checkGeneration("generate.jwt")) {
+                generateCustomClaims(jwtPath.getPath(), basePackage);
+                generateJwtAuthenticationEntryClass(jwtPath.getPath(), basePackage);
+                generateJwtAuthenticationFilterClass(jwtPath.getPath(), basePackage);
+                generateJwtAuthenticationProvider(jwtPath.getPath(), basePackage);
+                generateJwtAuthenticationTokenClass(jwtPath.getPath(), basePackage);
+                generateJwtUserDetails(jwtPath.getPath(), basePackage);
+                generateJwtUtilClass(jwtPath.getPath(), basePackage);
+                generateSecurityWrapperClass(jwtPath.getPath(), basePackage);
+                generateTokenRepository(jwtPath.getPath(), basePackage);
+            }
+
+            if (checkGeneration("generate.security.service")) {
+                generateSecurityServiceClass(servicePath.getPath(), basePackage);
+            }
+            if (checkGeneration("generate.login.rest")) {
+                generateLoginRestService(restPath.getPath(), basePackage);
+            }
         }
 
-        //fill jwt package
-        if (checkGeneration("generate.jwt")) {
-            generateCustomClaims(jwtPath.getPath(), basePackage);
-            generateJwtAuthenticationEntryClass(jwtPath.getPath(), basePackage);
-            generateJwtAuthenticationFilterClass(jwtPath.getPath(), basePackage);
-            generateJwtAuthenticationProvider(jwtPath.getPath(), basePackage);
-            generateJwtAuthenticationTokenClass(jwtPath.getPath(), basePackage);
-            generateJwtUserDetails(jwtPath.getPath(), basePackage);
-            generateJwtUtilClass(jwtPath.getPath(), basePackage);
-            generateSecurityWrapperClass(jwtPath.getPath(), basePackage);
-            generateTokenRepository(jwtPath.getPath(), basePackage);
-        }
+        if(systemDefinition.getGenerateFrontend() == null || systemDefinition.getGenerateFrontend()) {
+            systemDefinition.getFrontendDefinition().getEntityDefinitionList().forEach(entity -> {
+                String entityEnglishName = entity.getName().getNames().get("en");
+                String entityFarsiName = entity.getName().getNames().get("fa");
 
-        if (checkGeneration("generate.security.service")) {
-            generateSecurityServiceClass(servicePath.getPath(), basePackage);
-        }
-        if (checkGeneration("generate.login.rest")) {
-            generateLoginRestService(restPath.getPath(), basePackage);
-        }
+                try {
+                    FrontGenerator.generateEntityComponent(entityNameList, frontProjectPath, entityEnglishName, entityFarsiName, entity.getEntityFieldDefinitionList());
+                    FrontGenerator.generateEntityService(frontProjectPath, entityEnglishName);
+                    FrontGenerator.generateEntityHtmlView(frontProjectPath, systemDefinition, entity, entityLabels, entity.getEntityFieldDefinitionList());
+                } catch (FileNotFoundException e) {
+                    e.printStackTrace();
+                }
 
+            });
+
+            FrontGenerator.refactorAppModule(frontProjectPath, entityNameList);
+            FrontGenerator.generateRouter(frontProjectPath, entityNameList);
+            FrontGenerator.generateSidebarComponent(frontProjectPath, entityNameList, farsiNames);
+            FrontGenerator.generateSidebarComponentView(frontProjectPath, systemDefinition.getFrontendDefinition().getProjectFarsiName());
+            FrontGenerator.generateProxyConf(frontProjectPath, contextPath, portNumber);
+            FrontGenerator.generateEnvironment(frontProjectPath, contextPath);
+            FrontGenerator.generateProductionEnvironment(frontProjectPath, contextPath);
+        }
     }
 
     private static String generateLoginRestService(String path, String basePackage) throws FileNotFoundException {
@@ -791,7 +798,6 @@ public class NicicoGenerator {
                 .append("public class #Entity implements DomainEntity {\n")
                 .append("\n");
 
-//        for (Map.Entry<String, String> entry : fields.entrySet()) {
         entityFieldDefinitionList.forEach(field -> {
             content.append("\n");
             String fieldEnglishName = field.getName().getNames().get("en");
@@ -822,11 +828,7 @@ public class NicicoGenerator {
                         if (!field.getNullable()) {
                             content.append(", nullable = " + false);
                         }
-                        //no need to write true, its default value
-//                    {
-//                        content.append(", nullable = " + true );
-//                    }
-                        if (field.getLength() != null){
+                        if (field.getLength() != null) {
                             String length = field.getLength() + "";
                             content.append(", length = ").append(length);
                         }
@@ -844,11 +846,8 @@ public class NicicoGenerator {
             }
         });
 
-//        }
-
         content.append("\n\n");
 
-//        for (Map.Entry<String, String> entry : fields.entrySet()) {
         entityFieldDefinitionList.forEach(field -> {
             String fieldEnglishName = field.getName().getNames().get("en");
             String fieldFarsiName = field.getName().getNames().get("fa");
@@ -879,7 +878,6 @@ public class NicicoGenerator {
             }
         });
 
-//        }
         content.append("\n");
 
         content.append("    @Override\n")
@@ -917,42 +915,6 @@ public class NicicoGenerator {
         }
         return result;
     }
-
-//    private static boolean findFieldNullability(String entityName, String fieldName) {
-//        try {
-//            String s = InitializrReaderUtility.getResourceProperity(entityName + ".field.nullable." + fieldName);
-//            if (s.equalsIgnoreCase("false"))
-//                return false;
-//            return true;
-//        } catch (Exception e) {
-//            return true;
-//        }
-//    }
-
-//    private static String findFieldLength(String entityName, String fieldName) {
-//        try {
-//            String s = InitializrReaderUtility.getResourceProperity(entityName + ".field.length." + fieldName);
-//            if (Integer.parseInt(s) > 0) {
-//                return s;
-//            }
-//            String type = InitializrReaderUtility.getResourceProperity(entityName + ".field.type." + fieldName);
-//            if (type.equalsIgnoreCase("Integer")
-//                    || type.equalsIgnoreCase("int")
-//                    || type.equalsIgnoreCase("double")
-//                    || type.equalsIgnoreCase("long")
-//                    || type.equalsIgnoreCase("float")
-//                    || type.equalsIgnoreCase("byte")) {
-//                return "10";
-//            }
-//            if (type.equalsIgnoreCase("String")
-//                    || type.equalsIgnoreCase("char")) {
-//                return "100";
-//            }
-//        } catch (Exception e) {
-//            return null;
-//        }
-//        return "10";
-//    }
 
     private static String generateRunnerClass(String path, String basePackage, String projectName) throws FileNotFoundException {
         String content = "package #package;\n" +
@@ -1114,7 +1076,6 @@ public class NicicoGenerator {
 
         content.append("\n\n");
 
-//        for (Map.Entry<String, String> entry : fields.entrySet()) {
         entityFieldDefinitionList.forEach(field -> {
             String fieldEnglishName = field.getName().getNames().get("en");
             String fieldFarsiName = field.getName().getNames().get("fa");
@@ -1137,11 +1098,9 @@ public class NicicoGenerator {
             }
         });
 
-//        }
 
         content.append("\n \n");
 
-//        for (Map.Entry<String, String> entry : fields.entrySet()) {
         entityFieldDefinitionList.forEach(field -> {
             String fieldEnglishName = field.getName().getNames().get("en");
             String fieldFarsiName = field.getName().getNames().get("fa");
@@ -1164,7 +1123,7 @@ public class NicicoGenerator {
                         "    }\n" +
 
                         "    public void set" + upperCaseCharFieldName + "(" + fieldType + " " + fieldEnglishName + ") {\n" +
-                        "        this." +fieldEnglishName + " = " + fieldEnglishName + ";\n" +
+                        "        this." + fieldEnglishName + " = " + fieldEnglishName + ";\n" +
                         "    }" +
                         "\n");
 
@@ -1181,7 +1140,6 @@ public class NicicoGenerator {
             }
 
         });
-//        }
         String result = content.toString();
         return result;
 
@@ -1204,7 +1162,6 @@ public class NicicoGenerator {
                 "        #EntityDto dto = new #EntityDto();");
 
 
-//        for (Map.Entry<String, String> entry : fields.entrySet()) {
         fieldDefinitionList.forEach(field -> {
             String fieldEnglishName = field.getName().getNames().get("en");
             String fieldFarsiName = field.getName().getNames().get("fa");
@@ -1225,15 +1182,10 @@ public class NicicoGenerator {
             }
         });
 
-//        }
 
         content.append("\n        return dto;");
-
         content.append("\n  }");
-
-
         content.append("\n\n");
-
 
         //toEntity method
         content.append("\n    public static #Entity toEntity(#EntityDto dto) {\n\n" +
@@ -1241,8 +1193,6 @@ public class NicicoGenerator {
                 "            return null; \n" +
                 "        #Entity #entity = new #Entity();");
 
-
-//        for (Map.Entry<String, String> entry : fields.entrySet()) {
         fieldDefinitionList.forEach(field -> {
             String fieldEnglishName = field.getName().getNames().get("en");
             String fieldFarsiName = field.getName().getNames().get("fa");
@@ -1263,15 +1213,10 @@ public class NicicoGenerator {
             }
         });
 
-//        }
-
         content.append("\n        return #entity;");
-
         content.append("\n  }");
 
-
-        String result = content.toString();
-        return result;
+        return content.toString();
 
     }
 
@@ -1311,7 +1256,7 @@ public class NicicoGenerator {
                 .replaceAll("#Entity", entityName)
                 .replaceAll("#entity", entityInstanceName);
 
-        System.out.printf(result);
+        System.out.print(result);
         try (PrintStream out = new PrintStream(new FileOutputStream(targetPath + "/" + entityName + "RestService.java"))) {
             out.print(result);
         }
@@ -1376,7 +1321,6 @@ public class NicicoGenerator {
         content.append("    @GetMapping(\"/search\")\n" +
                 "    public PagedResult search(");
 
-//        for (Map.Entry<String, String> entry : fields.entrySet()) {
         for (EntityFieldDefinition field : fieldDefinitionList) {
             String fieldEnglishName = field.getName().getNames().get("en");
             String fieldFarsiName = field.getName().getNames().get("fa");
@@ -1384,13 +1328,11 @@ public class NicicoGenerator {
             if (getBaseTypes().contains(fieldType)) {
                 content.append("\n                                      @RequestParam(value = \"").append(fieldEnglishName).append("\", required = false) ");
                 content.append(fieldType).append(" ").append(fieldEnglishName).append(",");
-            } else if(fieldType.contains("DropDown")) {
+            } else if (fieldType.contains("DropDown")) {
                 content.append("\n                                      @RequestParam(value = \"").append(fieldEnglishName).append("\", required = false) ");
                 content.append("Long").append(" ").append(fieldEnglishName).append(",");
             }
         }
-
-//        }
 
         content.append("\n                                      @RequestParam(value = \"").append("firstIndex").append("\", required = false) ");
         content.append("Integer").append(" ").append("firstIndex").append(",");
@@ -1416,7 +1358,6 @@ public class NicicoGenerator {
 
 
         content.append("            #EntityDto #entity = new #EntityDto();\n");
-//        for (Map.Entry<String, String> entry : fields.entrySet()) {
         for (EntityFieldDefinition field : fieldDefinitionList) {
             String fieldEnglishName = field.getName().getNames().get("en");
             String fieldFarsiName = field.getName().getNames().get("fa");
@@ -1425,15 +1366,12 @@ public class NicicoGenerator {
                 String firstCharFieldName = fieldEnglishName.substring(0, 1);
                 String upperCaseCharFieldName = fieldEnglishName.replaceFirst(firstCharFieldName, firstCharFieldName.toUpperCase());
                 content.append("            #entity.set" + upperCaseCharFieldName + "(" + fieldEnglishName + "); \n");
-            }
-            else if (fieldType.contains("DropDown")) {
+            } else if (fieldType.contains("DropDown")) {
                 String firstCharFieldName = fieldEnglishName.substring(0, 1);
                 String upperCaseCharFieldName = fieldEnglishName.replaceFirst(firstCharFieldName, firstCharFieldName.toUpperCase());
                 content.append("            #entity.set" + upperCaseCharFieldName + "(" + fieldEnglishName + "); \n");
             }
         }
-
-//        }
 
         content.append("\n            return #entityService.findPagedByExample(#entity,\n" +
                 "                   sortObjectList,\n" +
@@ -1734,7 +1672,7 @@ public class NicicoGenerator {
                 "}\n";
         String result = content.replaceAll("#package", basePackage);
 
-        System.out.printf(result);
+        System.out.print(result);
         File file = new File(path);
         file.mkdirs();
 
@@ -1782,7 +1720,7 @@ public class NicicoGenerator {
                 "}\n";
         String result = content.replaceAll("#package", basePackage);
 
-        System.out.printf(result);
+        System.out.print(result);
         File file = new File(path);
         file.mkdirs();
 
@@ -1821,7 +1759,7 @@ public class NicicoGenerator {
                 "}\n";
         String result = content.replaceAll("#package", basePackage);
 
-        System.out.printf(result);
+        System.out.print(result);
         File file = new File(path);
         file.mkdirs();
 
@@ -1850,7 +1788,7 @@ public class NicicoGenerator {
 
         String result = content.replaceAll("#package", basePackage);
 
-        System.out.printf(result);
+        System.out.print(result);
         File file = new File(path);
         file.mkdirs();
 
@@ -1890,7 +1828,7 @@ public class NicicoGenerator {
 
         String result = content.replaceAll("#package", basePackage);
 
-        System.out.printf(result);
+        System.out.print(result);
         File file = new File(path);
         file.mkdirs();
 
@@ -1995,7 +1933,7 @@ public class NicicoGenerator {
 
         String result = content.replaceAll("#package", basePackage);
 
-        System.out.printf(result);
+        System.out.print(result);
         File file = new File(path);
         file.mkdirs();
 
@@ -2032,7 +1970,7 @@ public class NicicoGenerator {
 
         String result = content.replaceAll("#package", basePackage);
 
-        System.out.printf(result);
+        System.out.print(result);
         File file = new File(path);
         file.mkdirs();
 
@@ -2116,7 +2054,7 @@ public class NicicoGenerator {
 
         String result = content.replaceAll("#package", basePackage);
 
-        System.out.printf(result);
+        System.out.print(result);
         File file = new File(path);
         file.mkdirs();
 
@@ -2189,7 +2127,7 @@ public class NicicoGenerator {
 
         String result = content.replaceAll("#package", basePackage);
 
-        System.out.printf(result);
+        System.out.print(result);
         File file = new File(path);
         file.mkdirs();
 
@@ -2382,7 +2320,7 @@ public class NicicoGenerator {
 
         String result = content.replaceAll("#package", basePackage);
 
-        System.out.printf(result);
+        System.out.print(result);
         File file = new File(path);
         file.mkdirs();
 
@@ -2933,7 +2871,7 @@ public class NicicoGenerator {
                 "server.port=" + portNumber + "\n" +
                 "\n" +
                 "logging.file=target/logs/application.log\n" +
-                "logging.level." +  basePackage + "=INFO";
+                "logging.level." + basePackage + "=INFO";
 
         File file = new File(path);
         file.mkdirs();
