@@ -273,6 +273,8 @@ public class FrontGenerator {
                 "\n" +
                 "\n" +
                 "  edit(item) {\n" +
+                "    const el = document.getElementById('form');\n" +
+                "    el.scrollIntoView({behavior: 'smooth'});" +
                 "    this.#LowerCase = JSON.parse(JSON.stringify(item));\n");
 
         fieldDefinitionList.forEach(field -> {
@@ -372,7 +374,7 @@ public class FrontGenerator {
 
 
         StringBuilder content = new StringBuilder("<p-toast [style]=\"{marginTop: '30px'}\" position=\"top-center\" ></p-toast>\n" +
-                "<div class=\"main-content\">\n" +
+                "<div id=\"form\" class=\"main-content\">\n" +
                 "\n" +
                 "  <div class=\"ui-rtl\" dir=\"rtl\">\n" +
                 "    <p-panel>\n" +
@@ -411,7 +413,7 @@ public class FrontGenerator {
                 } else {
 
                     List<String> labelList = systemDefinition.getBackendDefinition().getEntityDefinitionList().stream().filter(e -> e.getName().getNames().get("en").equals(field.getFieldType().getType())).map(EntityDefinition::getLabel).collect(Collectors.toList());
-                    content.append("          <p-dropdown [options]=\"" + field.getName().getNames().get("en") + "List\" [(ngModel)]=\"#LowerCase." + field.getName().getNames().get("en") + "\" optionLabel=\"" + labelList.get(0) + "\"  dataKey=\"id\" ></p-dropdown>\n");
+                    content.append("          <p-dropdown [options]=\"commonService.preparePureListToDropdownWithNull(").append(field.getName().getNames().get("en")).append("List)\" [(ngModel)]=\"#LowerCase.").append(field.getName().getNames().get("en")).append("\" optionLabel=\"").append(labelList.get(0)).append("\" placeholder=\"انتخاب کنید\"  dataKey=\"id\" ></p-dropdown>\n");
                 }
             }
             content.append("        </div>\n");
