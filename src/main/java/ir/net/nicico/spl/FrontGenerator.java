@@ -107,7 +107,8 @@ public class FrontGenerator {
                 "import {QueryOptions} from '../general/query-options';\n" +
                 "import {MessageService} from 'primeng/api';\n" +
                 "import {CommonService} from '../common.service';\n" +
-                "import * as moment from 'jalali-moment';\n");
+                "import * as moment from 'jalali-moment';\n" +
+                "import {animate, state, style, transition, trigger} from '@angular/animations';\n");
 
         fieldDefinitionList.forEach(field -> {
             if (entitiesList.contains(field.getFieldType().getType())) {
@@ -122,7 +123,19 @@ public class FrontGenerator {
                 "@Component({\n" +
                 "  selector: 'app-#entity',\n" +
                 "  templateUrl: './#entity.component.html',\n" +
-                "  styleUrls: ['./#entity.component.css']\n" +
+                "  styleUrls: ['./#entity.component.css'],\n" +
+                "  animations: [\n" +
+                "    trigger('errorState', [\n" +
+                "      state('hidden', style({\n" +
+                "        opacity: 0\n" +
+                "      })),\n" +
+                "      state('visible', style({\n" +
+                "        opacity: 1\n" +
+                "      })),\n" +
+                "      transition('visible => hidden', animate('400ms ease-in')),\n" +
+                "      transition('hidden => visible', animate('400ms ease-out'))\n" +
+                "    ])\n" +
+                "  ]\n" +
                 "})\n" +
                 "export class #EntityComponent implements OnInit {\n" +
                 "\n" +
@@ -377,11 +390,16 @@ public class FrontGenerator {
                 "<div id=\"form\" class=\"main-content\">\n" +
                 "\n" +
                 "  <div class=\"ui-rtl\" dir=\"rtl\">\n" +
+                "   <div class=\"alert alert-danger\" style=\"margin-bottom: 0; font-family:iran-sans-web;\"\n" +
+                "         [@errorState]=\"form.dirty && !form.valid ? 'visible' : 'hidden'\">\n" +
+                "      اطلاعات وارد شده صحیح نیست\n" +
+                "    </div>\n\n" +
                 "    <p-panel>\n" +
                 "      <p-header>\n" +
                 "        #FarsiName\n" +
                 "      </p-header>\n" +
-                "\n");
+                "\n" +
+                "       <form #form=\"ngForm\">\n\n");
 
         entityFieldDefinitionList.forEach(field -> {
             content.append(
@@ -394,26 +412,26 @@ public class FrontGenerator {
 
             if ((field.getVisible() == null) || field.getVisible()) {
                 if (field.getFieldType().getType().toLowerCase().contains("Date".toLowerCase())) {
-                    content.append("        <dp-date-picker \n" + "                dir=\"rtl\"\n" + "                [(ngModel)]=\"#LowerCase.").append(field.getName().getNames().get("en")).append("\"\n").append("                mode=\"day\"\n").append("                placeholder=\"تاریخ\"\n").append("                theme=\"dp-material\">\n").append("          </dp-date-picker>\n");
+                    content.append("        <dp-date-picker name=\"" + field.getName().getNames().get("en") + "Calendar\" \n" + "                dir=\"rtl\"\n" + "                [(ngModel)]=\"#LowerCase.").append(field.getName().getNames().get("en")).append("\"\n").append("                mode=\"day\"\n").append("                placeholder=\"تاریخ\"\n").append("                theme=\"dp-material\">\n").append("          </dp-date-picker>\n");
                 } else if (field.getFieldType().getType().toLowerCase().contains("DropDown".toLowerCase())) {
 
-                    content.append("          <p-dropdown [options]=\"").append(field.getName().getNames().get("en")).append("options\" dataKey=\"value\" [(ngModel)]=\"#LowerCase.").append(field.getName().getNames().get("en")).append("\" optionLabel=\"label\" dataKey=\"value\" ></p-dropdown>\n");
+                    content.append("          <p-dropdown name=\"" + field.getName().getNames().get("en") + "DropDown\" [options]=\"").append(field.getName().getNames().get("en")).append("options\" dataKey=\"value\" [(ngModel)]=\"#LowerCase.").append(field.getName().getNames().get("en")).append("\" optionLabel=\"label\" ></p-dropdown>\n");
                 } else if (NicicoGenerator.getBaseTypes().contains(field.getFieldType().getType())) {
 
-                    content.append("          <input pInputText type=\"text\" [(ngModel)]=\"#LowerCase.").append(field.getName().getNames().get("en")).append("\"");
+                    content.append("          <input name=\"" + field.getName().getNames().get("en") + "Input\" pInputText type=\"text\" [(ngModel)]=\"#LowerCase.").append(field.getName().getNames().get("en")).append("\"");
 
                     if (field.getValidationRegex() != null && !field.getValidationRegex().isEmpty()) {
-                        content.append(" [pKeyFilter]=\"").append(field.getName().getNames().get("en")).append("Filter").append("\" ");
+                        content.append(" [pValidateOnly]=\"true\" [pKeyFilter]=\"").append(field.getName().getNames().get("en")).append("Filter").append("\" ");
                     } else {
                         if (GeneratorTools.isInteger(field.getFieldType().getType())) {
-                            content.append(" pKeyFilter=\"int\" ");
+                            content.append(" [pValidateOnly]=\"true\" pKeyFilter=\"int\" ");
                         }
                     }
                     content.append(" >\n");
                 } else {
 
                     List<String> labelList = systemDefinition.getBackendDefinition().getEntityDefinitionList().stream().filter(e -> e.getName().getNames().get("en").equals(field.getFieldType().getType())).map(EntityDefinition::getLabel).collect(Collectors.toList());
-                    content.append("          <p-dropdown [options]=\"commonService.preparePureListToDropdownWithNull(").append(field.getName().getNames().get("en")).append("List)\" [(ngModel)]=\"#LowerCase.").append(field.getName().getNames().get("en")).append("\" optionLabel=\"").append(labelList.get(0)).append("\" placeholder=\"انتخاب کنید\"  dataKey=\"id\" ></p-dropdown>\n");
+                    content.append("          <p-dropdown name=\"" + field.getName().getNames().get("en") + "DropDown\" [options]=\"commonService.preparePureListToDropdownWithNull(").append(field.getName().getNames().get("en")).append("List)\" [(ngModel)]=\"#LowerCase.").append(field.getName().getNames().get("en")).append("\" optionLabel=\"").append(labelList.get(0)).append("\" placeholder=\"انتخاب کنید\"  dataKey=\"id\" ></p-dropdown>\n");
                 }
             }
             content.append("        </div>\n");
@@ -450,10 +468,10 @@ public class FrontGenerator {
                 "              <th style=\"overflow: hidden;\" colspan=\"1\"><p-button label=\"جستجو\" (onClick)=\"loadItems($event)\" icon=\"pi pi-search\"></p-button></th>\n");
         entityFieldDefinitionList.forEach(field -> {
             if (NicicoGenerator.getBaseTypes().contains(field.getFieldType().getType())) {
-                content.append("              <th colspan=\"2\"><input pInputText [(ngModel)]=\"search" + entityDefinition.getName().getNames().get("en") + "." + field.getName().getNames().get("en") + "\"></th>\n");
+                content.append("              <th colspan=\"2\"><input name=\"" + field.getName().getNames().get("en") + "FilterInput\" pInputText [(ngModel)]=\"search" + entityDefinition.getName().getNames().get("en") + "." + field.getName().getNames().get("en") + "\"></th>\n");
             } else if (field.getFieldType().getType().contains("DropDown")) {
                 content.append("          <th colspan=\"2\"> \n" +
-                        "               <p-dropdown [options]=\"" + field.getName().getNames().get("en") + "options\" dataKey=\"value\" [(ngModel)]=\"search" + entityDefinition.getName().getNames().get("en") + "." + field.getName().getNames().get("en") + "\" optionLabel=\"label\" dataKey=\"value\" ></p-dropdown>\n" +
+                        "               <p-dropdown name=\"" + field.getName().getNames().get("en") + "FilterDropDown\" [options]=\"" + field.getName().getNames().get("en") + "options\" dataKey=\"value\" [(ngModel)]=\"search" + entityDefinition.getName().getNames().get("en") + "." + field.getName().getNames().get("en") + "\" optionLabel=\"label\" dataKey=\"value\" ></p-dropdown>\n" +
                         "           </th>\n");
             } else {
                 content.append("            <th colspan=\"2\"></th>\n");
@@ -501,6 +519,7 @@ public class FrontGenerator {
                 "      </div>\n" +
                 "\n" +
                 "\n" +
+                "       </form>\n" +
                 "  </p-panel>\n" +
                 "\n" +
                 "  <p-confirmDialog header=\"توجه\" icon=\"pi pi-exclamation-triangle\" acceptLabel=\"بله\"\n" +
