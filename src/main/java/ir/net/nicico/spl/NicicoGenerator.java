@@ -166,7 +166,7 @@ public class NicicoGenerator {
         resourcePath.mkdirs();
 
 
-        if(systemDefinition.getGenerateBackend() == null || systemDefinition.getGenerateBackend()) {
+        if (systemDefinition.getGenerateBackend() == null || systemDefinition.getGenerateBackend()) {
             if (checkGeneration("generate.pom")) {
                 generatePOMFile(rootPath.getPath(), projectName, projectDescription, artifcatId, groupId);
             }
@@ -176,7 +176,7 @@ public class NicicoGenerator {
             }
 
             if (checkGeneration("generate.properties")) {
-                generateApplicationDotPropertiesFile(resourcePath.getPath(), dataSourceUrl, dataSourceUsername, dataSourcePassword, contextPath, portNumber, basePackage);
+                generateApplicationDotPropertiesFile(resourcePath.getPath(), dataSourceUrl, dataSourceUsername, dataSourcePassword, contextPath, portNumber, basePackage, systemDefinition.getBackendDefinition().getSecurityConfig().getProvider());
             }
 
 
@@ -189,7 +189,7 @@ public class NicicoGenerator {
             }
 
             if (checkGeneration("generate.security.config")) {
-                generateSecurityConfig(basePackage, securityPath.getPath());
+                generateSecurityConfig(basePackage, securityPath.getPath(), systemDefinition.getBackendDefinition().getSecurityConfig().getProvider());
             }
 
             if (checkGeneration("generate.security.roles")) {
@@ -263,7 +263,7 @@ public class NicicoGenerator {
             }
         }
 
-        if(systemDefinition.getGenerateFrontend() == null || systemDefinition.getGenerateFrontend()) {
+        if (systemDefinition.getGenerateFrontend() == null || systemDefinition.getGenerateFrontend()) {
             systemDefinition.getFrontendDefinition().getEntityDefinitionList().forEach(entity -> {
                 String entityEnglishName = entity.getName().getNames().get("en");
                 String entityFarsiName = entity.getName().getNames().get("fa");
@@ -341,9 +341,10 @@ public class NicicoGenerator {
         return result;
     }
 
-    private static String generateSecurityConfig(String basePackage, String path) throws FileNotFoundException {
+    private static String generateSecurityConfig(String basePackage, String path, String securityProvider) throws FileNotFoundException {
 
-        String content = "package #package.security;\n" +
+
+        StringBuilder content = new StringBuilder("package #package.security;\n" +
                 "\n" +
                 "import #package.jwt.JwtAuthenticationEntryPoint;\n" +
                 "import #package.jwt.JwtAuthenticationFilter;\n" +
@@ -372,14 +373,16 @@ public class NicicoGenerator {
                 "import org.springframework.security.crypto.password.PasswordEncoder;\n" +
                 "import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;\n" +
                 "\n" +
-                "@Configuration\n" +
-                "@EnableWebSecurity\n" +
-                "@EnableGlobalMethodSecurity(\n" +
-                "        securedEnabled = true,\n" +
-                "        jsr250Enabled = true,\n" +
-                "        prePostEnabled = true\n" +
-                ")\n" +
-                "public class SecurityConfig extends WebSecurityConfigurerAdapter {\n" +
+                "@Configuration\n");
+        if (securityProvider == null || securityProvider.isEmpty() || securityProvider.toLowerCase().contains("jwt".toLowerCase())) {
+            content.append("@EnableWebSecurity\n" +
+                    "@EnableGlobalMethodSecurity(\n" +
+                    "        securedEnabled = true,\n" +
+                    "        jsr250Enabled = true,\n" +
+                    "        prePostEnabled = true\n" +
+                    ")\n");
+        }
+        content.append("public class SecurityConfig extends WebSecurityConfigurerAdapter {\n" +
                 "\n" +
                 "\n" +
                 "    private final JwtAuthenticationEntryPoint unauthorizedHandler;\n" +
@@ -429,40 +432,44 @@ public class NicicoGenerator {
                 "    public AuthenticationManager authenticationManagerBean() throws Exception {\n" +
                 "        return super.authenticationManagerBean();\n" +
                 "    }\n" +
-                "\n" +
-                "    @Override\n" +
-                "    protected void configure(HttpSecurity http) throws Exception {\n" +
-                "\n" +
-                "        http\n" +
-                "                .csrf()\n" +
-                "                .disable()\n" +
-                "                .headers()\n" +
-                "                .frameOptions()\n" +
-                "                .disable()\n" +
-                "                .and()\n" +
-                "                .sessionManagement()\n" +
-                "                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)\n" +
-                "                .and()\n" +
-                "                .authorizeRequests()\n" +
-                "                .antMatchers(\"**\").permitAll()\n" +
-                "                .and()\n" +
-                "                .addFilterBefore(new JwtAuthenticationFilter(tokenRepository), UsernamePasswordAuthenticationFilter.class)\n" +
-                "                .antMatcher(\"**\")\n" +
-                "                .authorizeRequests();\n" +
-                "\n" +
-                "    }\n" +
-                "\n" +
-                "    @Override\n" +
-                "    public void configure(WebSecurity web) throws Exception {\n" +
-                "        web\n" +
-                "                .ignoring()\n" +
-                "                .antMatchers(\"/auth/**\")\n" +
-                "                .antMatchers(\"/public/**\");\n" +
-                "    }\n" +
-                "\n" +
-                "}";
+                "\n");
 
-        String result = content.replaceAll("#package", basePackage);
+        if (securityProvider == null || securityProvider.isEmpty() || securityProvider.toLowerCase().contains("jwt".toLowerCase())) {
+            content.append("    @Override\n" +
+                    "    protected void configure(HttpSecurity http) throws Exception {\n" +
+                    "\n" +
+                    "        http\n" +
+                    "                .csrf()\n" +
+                    "                .disable()\n" +
+                    "                .headers()\n" +
+                    "                .frameOptions()\n" +
+                    "                .disable()\n" +
+                    "                .and()\n" +
+                    "                .sessionManagement()\n" +
+                    "                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)\n" +
+                    "                .and()\n" +
+                    "                .authorizeRequests()\n" +
+                    "                .antMatchers(\"**\").permitAll()\n" +
+                    "                .and()\n" +
+                    "                .addFilterBefore(new JwtAuthenticationFilter(tokenRepository), UsernamePasswordAuthenticationFilter.class)\n" +
+                    "                .antMatcher(\"**\")\n" +
+                    "                .authorizeRequests();\n" +
+                    "\n" +
+                    "    }\n" +
+                    "\n" +
+                    "    @Override\n" +
+                    "    public void configure(WebSecurity web) throws Exception {\n" +
+                    "        web\n" +
+                    "                .ignoring()\n" +
+                    "                .antMatchers(\"/auth/**\")\n" +
+                    "                .antMatchers(\"/public/**\");\n" +
+                    "    }\n" +
+                    "\n");
+
+        }
+        content.append("}\n");
+
+        String result = content.toString().replaceAll("#package", basePackage);
 
         System.out.printf(result);
         File file = new File(path);
@@ -2883,8 +2890,9 @@ public class NicicoGenerator {
                                                                String dataSourcePassword,
                                                                String contextPath,
                                                                String portNumber,
-                                                               String basePackage) throws FileNotFoundException {
-        String content = "spring.datasource.url=" + datasourceUrl + "\n" +
+                                                               String basePackage,
+                                                               String securityProvider) throws FileNotFoundException {
+        StringBuilder content = new StringBuilder("spring.datasource.url=" + datasourceUrl + "\n" +
                 "spring.datasource.username=" + dataSourceUserName + "\n" +
                 "spring.datasource.password=" + dataSourcePassword + "\n" +
                 "spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver\n" +
@@ -2901,17 +2909,18 @@ public class NicicoGenerator {
                 "spring.redis.port=6379\n" +
                 "\n" +
                 "spring.mian.allow-bean-definition-overriding=true\n" +
-                "\n" +
-                "spring.security.oauth2.client.registration.oserver.client-id=${spring.application.name}\n" +
-                "spring.security.oauth2.client.registration.oserver.client-secret=password\n" +
-                "spring.security.oauth2.client.registration.oserver.authorization-grant-type=authorization_code\n" +
-                "spring.security.oauth2.client.registration.oserver.redirect-uri='{baseUrl}/login/oauth2/code/{registrationId}'\n" +
-                "spring.security.oauth2.client.registration.oserver.scope.=user_info\n" +
-                "spring.security.oauth2.client.provider.oserver.authorization-uri=http://devapp01.icico.net.ir/oauth/authorize\n" +
-                "spring.security.oauth2.client.provider.oserver.token-uri=http://devapp01.icico.net.ir/oauth/token\n" +
-                "spring.security.oauth2.client.provider.oserver.user-info-uri=http://devapp01.icico.net.ir/user/info\n" +
-                "spring.security.oauth2.client.provider.oserver.user-name-attribute=username\n" +
-                "";
+                "\n");
+        if (securityProvider != null && !securityProvider.isEmpty() && securityProvider.toLowerCase().contains("OAuth".toLowerCase())) {
+            content.append("spring.security.oauth2.client.registration.oserver.client-id=${spring.application.name}\n" +
+                    "spring.security.oauth2.client.registration.oserver.client-secret=password\n" +
+                    "spring.security.oauth2.client.registration.oserver.authorization-grant-type=authorization_code\n" +
+                    "spring.security.oauth2.client.registration.oserver.redirect-uri='{baseUrl}/login/oauth2/code/{registrationId}'\n" +
+                    "spring.security.oauth2.client.registration.oserver.scope.=user_info\n" +
+                    "spring.security.oauth2.client.provider.oserver.authorization-uri=http://devapp01.icico.net.ir/oauth/authorize\n" +
+                    "spring.security.oauth2.client.provider.oserver.token-uri=http://devapp01.icico.net.ir/oauth/token\n" +
+                    "spring.security.oauth2.client.provider.oserver.user-info-uri=http://devapp01.icico.net.ir/user/info\n" +
+                    "spring.security.oauth2.client.provider.oserver.user-name-attribute=username\n");
+        }
 
         File file = new File(path);
         file.mkdirs();
@@ -2919,7 +2928,7 @@ public class NicicoGenerator {
         try (PrintStream out = new PrintStream(new FileOutputStream(path + "/application.properties"))) {
             out.print(content);
         }
-        return content;
+        return content.toString();
 
     }
 

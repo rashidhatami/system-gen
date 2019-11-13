@@ -9,6 +9,7 @@ public class SecurityConfig implements Serializable {
 
     private String jwtKey;
     private String tokenExpiration;
+    private String provider;
 
     public String getJwtKey() {
         return jwtKey;
@@ -24,5 +25,13 @@ public class SecurityConfig implements Serializable {
 
     public void setTokenExpiration(String tokenExpiration) {
         this.tokenExpiration = tokenExpiration;
+    }
+
+    public String getProvider() {
+        return provider;
+    }
+
+    public void setProvider(String provider) {
+        this.provider = provider;
     }
 }
