@@ -681,10 +681,10 @@ public class NicicoGenerator {
                 "    <description>#projectDescription</description>\n" +
                 "\n" +
                 "    <parent>\n" +
-                "        <groupId>org.springframework.boot</groupId>\n" +
-                "        <artifactId>spring-boot-starter-parent</artifactId>\n" +
-                "        <version>2.0.4.RELEASE</version>\n" +
-                "        <relativePath/> <!-- lookup parent from repository -->\n" +
+                "        <groupId>com.nicico.copper</groupId>\n" +
+                "        <artifactId>copper-starter-parent</artifactId>\n" +
+                "        <version>2.0-SNAPSHOT</version>\n" +
+                "        <relativePath />\n" +
                 "    </parent>\n" +
                 "\n" +
                 "    <properties>\n" +
@@ -761,6 +761,31 @@ public class NicicoGenerator {
                 "            </plugin>\n" +
                 "        </plugins>\n" +
                 "    </build>\n" +
+                "\n" +
+                "    <profiles>\n" +
+                "        <profile>\n" +
+                "            <id>NICICO</id>\n" +
+                "            <activation>\n" +
+                "                <activeByDefault>true</activeByDefault>\n" +
+                "            </activation>\n" +
+                "            <distributionManagement>\n" +
+                "                <snapshotRepository>\n" +
+                "                    <id>nexus-snapshots</id>\n" +
+                "                    <url>http://devops01.icico.net.ir/nexus/repository/maven-snapshots/</url>\n" +
+                "                </snapshotRepository>\n" +
+                "                <repository>\n" +
+                "                    <id>nexus-releases</id>\n" +
+                "                    <url>http://devops01.icico.net.ir/nexus/repository/maven-releases/</url>\n" +
+                "                </repository>\n" +
+                "            </distributionManagement>\n" +
+                "            <repositories>\n" +
+                "                <repository>\n" +
+                "                    <id>nexus-public</id>\n" +
+                "                    <url>http://devops01.icico.net.ir/nexus/repository/maven-public/</url>\n" +
+                "                </repository>\n" +
+                "            </repositories>\n" +
+                "        </profile>\n" +
+                "    </profiles>" +
                 "\n" +
                 "</project>";
 
@@ -2871,7 +2896,22 @@ public class NicicoGenerator {
                 "server.port=" + portNumber + "\n" +
                 "\n" +
                 "logging.file=target/logs/application.log\n" +
-                "logging.level." + basePackage + "=INFO";
+                "logging.level." + basePackage + "=INFO\n" +
+                "\n" +
+                "spring.redis.port=6379\n" +
+                "\n" +
+                "spring.mian.allow-bean-definition-overriding=true\n" +
+                "\n" +
+                "spring.security.oauth2.client.registration.oserver.client-id=${spring.application.name}\n" +
+                "spring.security.oauth2.client.registration.oserver.client-secret=password\n" +
+                "spring.security.oauth2.client.registration.oserver.authorization-grant-type=authorization_code\n" +
+                "spring.security.oauth2.client.registration.oserver.redirect-uri='{baseUrl}/login/oauth2/code/{registrationId}'\n" +
+                "spring.security.oauth2.client.registration.oserver.scope.=user_info\n" +
+                "spring.security.oauth2.client.provider.oserver.authorization-uri=http://devapp01.icico.net.ir/oauth/authorize\n" +
+                "spring.security.oauth2.client.provider.oserver.token-uri=http://devapp01.icico.net.ir/oauth/token\n" +
+                "spring.security.oauth2.client.provider.oserver.user-info-uri=http://devapp01.icico.net.ir/user/info\n" +
+                "spring.security.oauth2.client.provider.oserver.user-name-attribute=username\n" +
+                "";
 
         File file = new File(path);
         file.mkdirs();
