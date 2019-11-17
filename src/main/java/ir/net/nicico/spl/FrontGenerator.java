@@ -2,10 +2,7 @@ package ir.net.nicico.spl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import ir.net.nicico.spl.types.DropDownType;
-import ir.net.nicico.spl.types.EntityDefinition;
-import ir.net.nicico.spl.types.EntityFieldDefinition;
-import ir.net.nicico.spl.types.SystemDefinition;
+import ir.net.nicico.spl.types.*;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -158,7 +155,8 @@ public class FrontGenerator {
 
 
         fieldDefinitionList.forEach(field -> {
-            if (field.getFieldType().getType().toLowerCase().contains("DropDown".toLowerCase())) {
+            if (field.getFieldType().getType().toLowerCase().contains(ComponentTypes.DROP_DOWN.getValue().toLowerCase())
+                    ||  field.getFieldType().getType().toLowerCase().contains(ComponentTypes.RADIO_BUTTON.getValue().toLowerCase())) {
                 ObjectMapper objectMapper = new ObjectMapper();
                 String json = field.getFieldType().getOptions();
                 try {
@@ -202,7 +200,7 @@ public class FrontGenerator {
         content.append("\n" +
                 "  ngOnInit() {\n");
         fieldDefinitionList.forEach(field -> {
-            if (field.getFieldType().getType().contains("DropDown")) {
+            if (field.getFieldType().getType().contains(ComponentTypes.DROP_DOWN.getValue())) {
                 content.append("    this." + field.getName().getNames().get("en") + "options = this.commonService.preparePureListToDropdown(this." + field.getName().getNames().get("en") + "options);\n");
             }
         });
@@ -235,11 +233,13 @@ public class FrontGenerator {
                 content.append("    if (this.search" + entityName + "." + field.getName().getNames().get("en") + ") {\n");
                 content.append("        query.options.push({key: '" + field.getName().getNames().get("en") + "', value: this.search" + entityName + "." + field.getName().getNames().get("en") + "});\n");
                 content.append("    }\n");
-            } else if (field.getFieldType().getType().contains("DropDown")) {
+            } else if (field.getFieldType().getType().contains(ComponentTypes.DROP_DOWN.getValue())
+                    || field.getFieldType().getType().contains(ComponentTypes.RADIO_BUTTON.getValue())) {
                 content.append("    if (this.search" + entityName + "." + field.getName().getNames().get("en") + " && this.search" + entityName + "." + field.getName().getNames().get("en") + ".value) {\n");
                 content.append("        query.options.push({key: '" + field.getName().getNames().get("en") + "', value: this.search" + entityName + "." + field.getName().getNames().get("en") + ".value" + "});\n");
                 content.append("    }\n");
             }
+            //fixme for radiobutton
         });
 
         content.append("\n    this.#LowerCaseService.list(query, 'search').subscribe(res => {\n" +
@@ -262,7 +262,7 @@ public class FrontGenerator {
 
         content.append("  save() {\n");
         fieldDefinitionList.forEach(field -> {
-            if (field.getFieldType().getType().contains("DropDown")) {
+            if (field.getFieldType().getType().contains(ComponentTypes.DROP_DOWN.getValue())) {
                 content.append("    if(this.#LowerCase." + field.getName().getNames().get("en") + ") { \n");
                 content.append("        this.#LowerCase." + field.getName().getNames().get("en") + " = this.#LowerCase." + field.getName().getNames().get("en") + ".value;\n");
                 content.append("    }\n");
@@ -291,7 +291,7 @@ public class FrontGenerator {
                 "    this.#LowerCase = JSON.parse(JSON.stringify(item));\n");
 
         fieldDefinitionList.forEach(field -> {
-            if (field.getFieldType().getType().contains("DropDown")) {
+            if (field.getFieldType().getType().contains(ComponentTypes.DROP_DOWN.getValue())) {
                 content.append("    this.#LowerCase." + field.getName().getNames().get("en") + " = this." + field.getName().getNames().get("en") + "options.filter(v => v.value == this.#LowerCase." + field.getName().getNames().get("en") + ")[0];\n");
             }
         });
@@ -402,6 +402,13 @@ public class FrontGenerator {
                 "       <form #form=\"ngForm\">\n\n");
 
         entityFieldDefinitionList.forEach(field -> {
+
+            //validate colspan values of fields
+            if (field.getFieldType().getColspan() == null || field.getFieldType().getColspan() < 1) {
+                field.getFieldType().setColspan(2);
+            }
+
+
             content.append(
                     "      <div class=\"row\" style=\"direction: rtl\">\n");
             content.append("        <div class=\"col-lg-4\">\n" +
@@ -413,7 +420,15 @@ public class FrontGenerator {
             if ((field.getVisible() == null) || field.getVisible()) {
                 if (field.getFieldType().getType().toLowerCase().contains("Date".toLowerCase())) {
                     content.append("        <dp-date-picker name=\"" + field.getName().getNames().get("en") + "Calendar\" \n" + "                dir=\"rtl\"\n" + "                [(ngModel)]=\"#LowerCase.").append(field.getName().getNames().get("en")).append("\"\n").append("                mode=\"day\"\n").append("                placeholder=\"تاریخ\"\n").append("                theme=\"dp-material\">\n").append("          </dp-date-picker>\n");
-                } else if (field.getFieldType().getType().toLowerCase().contains("DropDown".toLowerCase())) {
+                } else if (field.getFieldType().getType().toLowerCase().contains(ComponentTypes.RADIO_BUTTON.getValue().toLowerCase())) {
+
+                    content.append("        <div class=\"ui-g\" style=\"width:250px;margin-bottom:10px\">\n");
+                    field.getFieldType().getOptionMap().forEach((k, v) -> {
+                        content.append("            <div class=\"ui-g-12\"><p-radioButton name=\"" + field.getName().getNames().get("en") + "RadioButton\" value=\"" + v + "\" label=\"" + k + "\" [(ngModel)]=\"#LowerCase.").append(field.getName().getNames().get("en")).append("\"  inputId=\"opt").append(v).append("\" ></p-radioButton></div>\n");
+                    });
+                    content.append("        </div>\n");
+
+                } else if (field.getFieldType().getType().toLowerCase().contains(ComponentTypes.DROP_DOWN.getValue().toLowerCase())) {
 
                     content.append("          <p-dropdown name=\"" + field.getName().getNames().get("en") + "DropDown\" [options]=\"").append(field.getName().getNames().get("en")).append("options\" dataKey=\"value\" [(ngModel)]=\"#LowerCase.").append(field.getName().getNames().get("en")).append("\" optionLabel=\"label\" ></p-dropdown>\n");
                 } else if (NicicoGenerator.getBaseTypes().contains(field.getFieldType().getType())) {
@@ -458,7 +473,7 @@ public class FrontGenerator {
         content.append("              <th colspan=\"1\">#</th>\n");
 
         entityFieldDefinitionList.forEach(field -> {
-            content.append("              <th colspan=\"2\">").append(field.getName().getNames().get("fa")).append("</th>\n");
+            content.append("              <th colspan=\"" + field.getFieldType().getColspan() + "\">").append(field.getName().getNames().get("fa")).append("</th>\n");
         });
 
         content.append("              <th colspan=\"2\">ویرایش</th>\n");
@@ -468,13 +483,15 @@ public class FrontGenerator {
                 "              <th style=\"overflow: hidden;\" colspan=\"1\"><p-button label=\"جستجو\" (onClick)=\"loadItems($event)\" icon=\"pi pi-search\"></p-button></th>\n");
         entityFieldDefinitionList.forEach(field -> {
             if (NicicoGenerator.getBaseTypes().contains(field.getFieldType().getType())) {
-                content.append("              <th colspan=\"2\"><input name=\"" + field.getName().getNames().get("en") + "FilterInput\" pInputText [(ngModel)]=\"search" + entityDefinition.getName().getNames().get("en") + "." + field.getName().getNames().get("en") + "\"></th>\n");
-            } else if (field.getFieldType().getType().contains("DropDown")) {
-                content.append("          <th colspan=\"2\"> \n" +
+                content.append("              <th colspan=\"" + field.getFieldType().getColspan() + "\"><input name=\"" + field.getName().getNames().get("en") + "FilterInput\" pInputText [(ngModel)]=\"search" + entityDefinition.getName().getNames().get("en") + "." + field.getName().getNames().get("en") + "\"></th>\n");
+            } else if (field.getFieldType().getType().contains(ComponentTypes.DROP_DOWN.getValue())
+                            || field.getFieldType().getType().contains(ComponentTypes.RADIO_BUTTON.getValue())) {
+                content.append("          <th colspan=\"" + field.getFieldType().getColspan() + "\"> \n" +
                         "               <p-dropdown name=\"" + field.getName().getNames().get("en") + "FilterDropDown\" [options]=\"" + field.getName().getNames().get("en") + "options\" dataKey=\"value\" [(ngModel)]=\"search" + entityDefinition.getName().getNames().get("en") + "." + field.getName().getNames().get("en") + "\" optionLabel=\"label\" dataKey=\"value\" ></p-dropdown>\n" +
                         "           </th>\n");
             } else {
-                content.append("            <th colspan=\"2\"></th>\n");
+                content.append("            <th colspan=\"" + field.getFieldType().getColspan() + "\"></th>\n");
+
             }
         });
 
@@ -489,15 +506,19 @@ public class FrontGenerator {
 
         entityFieldDefinitionList.forEach(field -> {
             if (field.getFieldType().getType().toLowerCase().contains("Date".toLowerCase())) {
-                content.append("              <td colspan=\"2\">{{item." + field.getName().getNames().get("en") + " | jalalitime }} </td>\n");
+                content.append("              <td colspan=\"" + field.getFieldType().getColspan() + "\">{{item." + field.getName().getNames().get("en") + " | jalalitime }} </td>\n");
             } else if (NicicoGenerator.getBaseTypes().contains(field.getFieldType().getType())) {
-                content.append("              <td colspan=\"2\">{{item." + field.getName().getNames().get("en") + "}} </td>\n");
-            } else if (field.getFieldType().getType().toLowerCase().contains("DropDown".toLowerCase())) {
+                content.append("              <td colspan=\"" + field.getFieldType().getColspan() + "\">{{item." + field.getName().getNames().get("en") + "}} </td>\n");
+            } else if (field.getFieldType().getType().toLowerCase().contains(ComponentTypes.DROP_DOWN.getValue().toLowerCase())) {
                 if (field.getFieldType().getOptions() != null) {
-                    content.append("              <td colspan=\"2\">{{item." + field.getName().getNames().get("en") + " | optionConverter : " + field.getFieldType().getOptions() + "}} </td>\n");
+                    content.append("              <td colspan=\"" + field.getFieldType().getColspan() + "\">{{item." + field.getName().getNames().get("en") + " | optionConverter : " + field.getFieldType().getOptions() + "}} </td>\n");
+                }
+            } else if (field.getFieldType().getType().toLowerCase().contains(ComponentTypes.RADIO_BUTTON.getValue().toLowerCase())) {
+                if (field.getFieldType().getOptions() != null) {
+                    content.append("              <td colspan=\"" + field.getFieldType().getColspan() + "\">{{item." + field.getName().getNames().get("en") + " | optionConverter : " + field.getFieldType().getOptions() + "}} </td>\n");
                 }
             } else {
-                content.append("              <td colspan=\"2\">\n" +
+                content.append("              <td colspan=\"" + field.getFieldType().getColspan() + "\">\n" +
                         "              <span *ngIf = \"item." + field.getName().getNames().get("en") + "\">\n" +
                         "                   {{item." + field.getName().getNames().get("en") + "." + entityLabels.get(field.getFieldType().getType()) + "}} \n" +
                         "               </span>\n" +

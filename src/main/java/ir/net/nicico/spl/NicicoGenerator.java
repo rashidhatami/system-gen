@@ -2,10 +2,7 @@ package ir.net.nicico.spl;
 
 
 import com.google.common.base.CaseFormat;
-import ir.net.nicico.spl.types.EntityDefinition;
-import ir.net.nicico.spl.types.EntityFieldDefinition;
-import ir.net.nicico.spl.types.GlobalizedName;
-import ir.net.nicico.spl.types.SystemDefinition;
+import ir.net.nicico.spl.types.*;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -193,7 +190,7 @@ public class NicicoGenerator {
             }
 
             if (checkGeneration("generate.security.roles")) {
-                generateAccessRoles(basePackage, securityPath.getPath());
+                generateAccessRoles(basePackage, securityPath.getPath(), entityNameList);
             }
 
 
@@ -481,9 +478,9 @@ public class NicicoGenerator {
         return result;
     }
 
-    private static String generateAccessRoles(String basePackage, String path) throws FileNotFoundException {
+    private static String generateAccessRoles(String basePackage, String path, List<String> entities) throws FileNotFoundException {
 
-        List<String> entities = findEntities();
+//        List<String> entities = findEntities();
         if (entities == null || entities.isEmpty())
             return null;
 
@@ -842,7 +839,19 @@ public class NicicoGenerator {
                         .append("    private ").append(fieldType).append(" ").append(fieldEnglishName).append(";")
                         .append("\n");
             } else {
-                if (fieldType.toLowerCase().contains("DropDown".toLowerCase())) {
+                if (fieldType.toLowerCase().contains(ComponentTypes.DROP_DOWN.getValue().toLowerCase())) {
+                    content.append("    @Column(name = \"").append(camelToSnake(fieldEnglishName)).append("\"");
+                    if (!field.getNullable()) {
+                        content.append(", nullable = " + false);
+                    }
+
+                    if (field.getLength() != null) {
+                        String length = field.getLength() + "";
+                        content.append(", length = ").append(length);
+                    }
+                    content.append(")\n");
+                    content.append("    private Long").append(" ").append(fieldEnglishName).append(";\n");
+                } else if (fieldType.toLowerCase().contains(ComponentTypes.RADIO_BUTTON.getValue().toLowerCase())) {
                     content.append("    @Column(name = \"").append(camelToSnake(fieldEnglishName)).append("\"");
                     if (!field.getNullable()) {
                         content.append(", nullable = " + false);
@@ -888,7 +897,16 @@ public class NicicoGenerator {
             String firstCharFieldName = fieldEnglishName.substring(0, 1);
             String upperCaseCharFieldName = fieldEnglishName.replaceFirst(firstCharFieldName, firstCharFieldName.toUpperCase());
 
-            if (fieldType.toLowerCase().contains("DropDown".toLowerCase())) {
+            if (fieldType.toLowerCase().contains(ComponentTypes.DROP_DOWN.getValue().toLowerCase())) {
+                content.append("\n")
+                        .append("    public Long get").append(upperCaseCharFieldName).append("() {\n")
+                        .append("        return ").append(fieldEnglishName).append(";\n")
+                        .append("    }\n")
+                        .append("\n")
+                        .append("    public void set").append(upperCaseCharFieldName).append("(").append("Long ").append(fieldEnglishName).append(") {\n")
+                        .append("       this.").append(fieldEnglishName).append(" = ").append(fieldEnglishName).append(";\n")
+                        .append("    }\n\n");
+            } else if (fieldType.toLowerCase().contains(ComponentTypes.RADIO_BUTTON.getValue().toLowerCase())) {
                 content.append("\n")
                         .append("    public Long get").append(upperCaseCharFieldName).append("() {\n")
                         .append("        return ").append(fieldEnglishName).append(";\n")
@@ -1123,7 +1141,9 @@ public class NicicoGenerator {
                     }
                 }
                 content.append("\n    private ").append(fieldType).append(" ").append(fieldEnglishName).append(";");
-            } else if (fieldType.toLowerCase().contains("DropDown".toLowerCase())) {
+            } else if (fieldType.toLowerCase().contains(ComponentTypes.DROP_DOWN.getValue().toLowerCase())) {
+                content.append("\n    private Long").append(" ").append(fieldEnglishName).append(";");
+            } else if (fieldType.toLowerCase().contains(ComponentTypes.RADIO_BUTTON.getValue().toLowerCase())) {
                 content.append("\n    private Long").append(" ").append(fieldEnglishName).append(";");
             } else {
                 content.append("\n    private ").append(fieldType + "Dto").append(" ").append(fieldEnglishName).append(";");
@@ -1140,7 +1160,16 @@ public class NicicoGenerator {
             String firstCharFieldName = fieldEnglishName.substring(0, 1);
             String upperCaseCharFieldName = fieldEnglishName.replaceFirst(firstCharFieldName, firstCharFieldName.toUpperCase());
 
-            if (fieldType.toLowerCase().contains("DropDown".toLowerCase())) {
+            if (fieldType.toLowerCase().contains(ComponentTypes.DROP_DOWN.getValue().toLowerCase())) {
+                content.append("\n")
+                        .append("    public Long get").append(upperCaseCharFieldName).append("() {\n")
+                        .append("        return ").append(fieldEnglishName).append(";\n")
+                        .append("    }\n")
+                        .append("\n")
+                        .append("    public void set").append(upperCaseCharFieldName).append("(").append("Long ").append(fieldEnglishName).append(") {\n")
+                        .append("       this.").append(fieldEnglishName).append(" = ").append(fieldEnglishName).append(";\n")
+                        .append("    }\n\n");
+            } else if (fieldType.toLowerCase().contains(ComponentTypes.RADIO_BUTTON.getValue().toLowerCase())) {
                 content.append("\n")
                         .append("    public Long get").append(upperCaseCharFieldName).append("() {\n")
                         .append("        return ").append(fieldEnglishName).append(";\n")
@@ -1201,7 +1230,9 @@ public class NicicoGenerator {
 
             String firstCharFieldName = fieldEnglishName.substring(0, 1);
             String upperCaseCharFieldName = fieldEnglishName.replaceFirst(firstCharFieldName, firstCharFieldName.toUpperCase());
-            if (fieldType.toLowerCase().contains("DropDown".toLowerCase())) {
+            if (fieldType.toLowerCase().contains(ComponentTypes.DROP_DOWN.getValue().toLowerCase())) {
+                content.append("\n        dto.set").append(upperCaseCharFieldName).append("(").append(entityInstanceName).append(".get").append(upperCaseCharFieldName).append("()").append(");");
+            } else if (fieldType.toLowerCase().contains(ComponentTypes.RADIO_BUTTON.getValue().toLowerCase())) {
                 content.append("\n        dto.set").append(upperCaseCharFieldName).append("(").append(entityInstanceName).append(".get").append(upperCaseCharFieldName).append("()").append(");");
             } else if (getBaseTypes().contains(fieldType)) {
                 content.append("\n        dto.set").append(upperCaseCharFieldName).append("(").append(entityInstanceName).append(".get").append(upperCaseCharFieldName).append("()").append(");");
@@ -1234,7 +1265,9 @@ public class NicicoGenerator {
             String upperCaseCharFieldName = fieldEnglishName.replaceFirst(firstCharFieldName, firstCharFieldName.toUpperCase());
             if (getBaseTypes().contains(fieldType)) {
                 content.append("\n        #entity.set").append(upperCaseCharFieldName).append("(").append("dto").append(".get").append(upperCaseCharFieldName).append("()").append(");");
-            } else if (fieldType.toLowerCase().contains("DropDown".toLowerCase())) {
+            } else if (fieldType.toLowerCase().contains(ComponentTypes.DROP_DOWN.getValue().toLowerCase())) {
+                content.append("\n        #entity.set").append(upperCaseCharFieldName).append("(").append("dto").append(".get").append(upperCaseCharFieldName).append("()").append(");");
+            } else if (fieldType.toLowerCase().contains(ComponentTypes.RADIO_BUTTON.getValue().toLowerCase())) {
                 content.append("\n        #entity.set").append(upperCaseCharFieldName).append("(").append("dto").append(".get").append(upperCaseCharFieldName).append("()").append(");");
             } else {
                 content.append("\n        #entity.set").append(upperCaseCharFieldName).append("(")
@@ -1360,7 +1393,10 @@ public class NicicoGenerator {
             if (getBaseTypes().contains(fieldType)) {
                 content.append("\n                                      @RequestParam(value = \"").append(fieldEnglishName).append("\", required = false) ");
                 content.append(fieldType).append(" ").append(fieldEnglishName).append(",");
-            } else if (fieldType.contains("DropDown")) {
+            } else if (fieldType.contains(ComponentTypes.DROP_DOWN.getValue())) {
+                content.append("\n                                      @RequestParam(value = \"").append(fieldEnglishName).append("\", required = false) ");
+                content.append("Long").append(" ").append(fieldEnglishName).append(",");
+            } else if (fieldType.contains(ComponentTypes.RADIO_BUTTON.getValue())) {
                 content.append("\n                                      @RequestParam(value = \"").append(fieldEnglishName).append("\", required = false) ");
                 content.append("Long").append(" ").append(fieldEnglishName).append(",");
             }
@@ -1398,7 +1434,11 @@ public class NicicoGenerator {
                 String firstCharFieldName = fieldEnglishName.substring(0, 1);
                 String upperCaseCharFieldName = fieldEnglishName.replaceFirst(firstCharFieldName, firstCharFieldName.toUpperCase());
                 content.append("            #entity.set" + upperCaseCharFieldName + "(" + fieldEnglishName + "); \n");
-            } else if (fieldType.contains("DropDown")) {
+            } else if (fieldType.contains(ComponentTypes.DROP_DOWN.getValue())) {
+                String firstCharFieldName = fieldEnglishName.substring(0, 1);
+                String upperCaseCharFieldName = fieldEnglishName.replaceFirst(firstCharFieldName, firstCharFieldName.toUpperCase());
+                content.append("            #entity.set" + upperCaseCharFieldName + "(" + fieldEnglishName + "); \n");
+            } else if (fieldType.contains(ComponentTypes.RADIO_BUTTON.getValue())) {
                 String firstCharFieldName = fieldEnglishName.substring(0, 1);
                 String upperCaseCharFieldName = fieldEnglishName.replaceFirst(firstCharFieldName, firstCharFieldName.toUpperCase());
                 content.append("            #entity.set" + upperCaseCharFieldName + "(" + fieldEnglishName + "); \n");
@@ -3003,16 +3043,16 @@ public class NicicoGenerator {
         return typeNames;
     }
 
-    public static List<String> getComponentTypes() {
-        List<String> typeNames = new ArrayList<>();
-        typeNames.add("DropDown");
-        typeNames.add("RadioButtonList");
-        typeNames.add("CheckBoxList");
-        typeNames.add("RadioButton");
-        typeNames.add("CheckBox");
-
-        return typeNames;
-    }
+//    public static List<String> getComponentTypes() {
+//        List<String> typeNames = new ArrayList<>();
+//        typeNames.add("DropDown");
+//        typeNames.add("RadioButtonList");
+//        typeNames.add("CheckBoxList");
+//        typeNames.add("RadioButton");
+//        typeNames.add("CheckBox");
+//
+//        return typeNames;
+//    }
 
     private static StringBuilder removeLastChar(StringBuilder str) {
         return new StringBuilder(str.substring(0, str.length() - 1));

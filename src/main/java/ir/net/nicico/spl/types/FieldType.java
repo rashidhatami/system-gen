@@ -1,8 +1,15 @@
 package ir.net.nicico.spl.types;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.Serializable;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class FieldType implements Serializable {
@@ -70,4 +77,46 @@ public class FieldType implements Serializable {
     public void setColspan(Integer colspan) {
         this.colspan = colspan;
     }
+
+    public List<String> getOptionLabels() {
+        if(options == null || options.isEmpty())
+            return null;
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            DropDownType[] list = objectMapper.readValue(options, DropDownType[].class);
+            return Arrays.stream(list).map(DropDownType::getLabel).collect(Collectors.toList());
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Json is not parsable for option : " + options);
+        }
+    }
+
+    public List<String> getOptionValues() {
+        if(options == null || options.isEmpty())
+            return null;
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            DropDownType[] list = objectMapper.readValue(options, DropDownType[].class);
+            return Arrays.stream(list).map(DropDownType::getValue).collect(Collectors.toList());
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Json is not parsable for option : " + options);
+        }
+    }
+
+    public Map<String, String> getOptionMap() {
+        if(options == null || options.isEmpty())
+            return null;
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            Map<String, String> optionMap = new HashMap<>();
+            options = options.replace("'", "\"");
+            DropDownType[] list = objectMapper.readValue(options, DropDownType[].class);
+            Arrays.stream(list).forEach(i -> {
+                optionMap.put(i.getLabel(), i.getValue());
+            });
+            return optionMap;
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Json is not parsable for option : " + options);
+        }
+    }
+
 }
