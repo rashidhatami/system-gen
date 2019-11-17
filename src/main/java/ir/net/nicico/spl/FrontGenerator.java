@@ -433,7 +433,10 @@ public class FrontGenerator {
                     content.append("          <p-dropdown name=\"" + field.getName().getNames().get("en") + "DropDown\" [options]=\"").append(field.getName().getNames().get("en")).append("options\" dataKey=\"value\" [(ngModel)]=\"#LowerCase.").append(field.getName().getNames().get("en")).append("\" optionLabel=\"label\" ></p-dropdown>\n");
                 } else if (NicicoGenerator.getBaseTypes().contains(field.getFieldType().getType())) {
 
-                    content.append("          <input name=\"" + field.getName().getNames().get("en") + "Input\" pInputText type=\"text\" [(ngModel)]=\"#LowerCase.").append(field.getName().getNames().get("en")).append("\"");
+                    String type = "text";
+                    if(field.getFieldType().getPassword())
+                        type = "password";
+                    content.append("          <input name=\"" + field.getName().getNames().get("en") + "Input\" pInputText type=\"" + type + "\" [(ngModel)]=\"#LowerCase.").append(field.getName().getNames().get("en")).append("\"");
 
                     if (field.getValidationRegex() != null && !field.getValidationRegex().isEmpty()) {
                         content.append(" [pValidateOnly]=\"true\" [pKeyFilter]=\"").append(field.getName().getNames().get("en")).append("Filter").append("\" ");

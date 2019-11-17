@@ -21,6 +21,7 @@ public class FieldType implements Serializable {
     private String optionLabel;//label
     private String optionValue;//value
     private Integer colspan;
+    private Boolean password = false;
 
     public String getType() {
         return type;
@@ -119,4 +120,11 @@ public class FieldType implements Serializable {
         }
     }
 
+    public Boolean getPassword() {
+        return password;
+    }
+
+    public void setPassword(Boolean password) {
+        this.password = password;
+    }
 }
