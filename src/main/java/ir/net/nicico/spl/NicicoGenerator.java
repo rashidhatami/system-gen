@@ -3,68 +3,74 @@ package ir.net.nicico.spl;
 
 import com.google.common.base.CaseFormat;
 import ir.net.nicico.spl.types.*;
+import org.springframework.stereotype.Service;
 
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+import javax.transaction.Transactional;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Service
 public class NicicoGenerator {
 
-    public static void main(String args[]) throws IOException {
+//    public static void main(String args[]) throws IOException {
+//
+//
+//        String dataSourceUrl = InitializrReaderUtility.getResourceProperity("datasource.url");
+//        String dataSourceUsername = InitializrReaderUtility.getResourceProperity("datasource.username");
+//        String dataSourcePassword = InitializrReaderUtility.getResourceProperity("datasource.password");
+//        String contextPath = InitializrReaderUtility.getResourceProperity("context.path");
+//        String portNumber = InitializrReaderUtility.getResourceProperity("port.number");
+//        String basePackage = InitializrReaderUtility.getResourceProperity("base.package");
+//        String targetPath = InitializrReaderUtility.getResourceProperity("target.path");
+//        String projectName = InitializrReaderUtility.getResourceProperity("project.name");
+//        String projectDescription = InitializrReaderUtility.getResourceProperity("project.description");
+//        String artifactId = InitializrReaderUtility.getResourceProperity("maven.artifact.id");
+//        String groupId = InitializrReaderUtility.getResourceProperity("maven.group.id");
+//        String jwtKey = InitializrReaderUtility.getResourceProperity("jwt.key");
+//        String jwtExpiration = InitializrReaderUtility.getResourceProperity("jwt.expiration");
+//        boolean validationEnabled = Boolean.parseBoolean(InitializrReaderUtility.getResourceProperity("validation.enabled"));
+//
+//        String frontProjectName = InitializrReaderUtility.getResourceProperity("front.project.name");
+//        String frontProjectPath = InitializrReaderUtility.getResourceProperity("front.target.path");
+//        String frontProjectFarsiPath = InitializrReaderUtility.getResourceProperity("front.project.farsi.name");
+//
+//        List<String> entities = findEntities();
+//        LinkedHashMap<String, String> farsiNames = findEntitiesFarsiNames();
+//        LinkedHashMap<String, String> entityLabels = findEntitiesLabels();
+//        LinkedHashMap<String, LinkedHashMap<String, String>> farsiFields = findFieldsFarsiNames();
+//
+//
+//        FrontGenerator frontGenerator = new FrontGenerator();
+//        frontGenerator.generateStructureOfProject(frontProjectName, frontProjectPath);
+//
+//        generateAll(basePackage,
+//                entities,
+//                targetPath,
+//                projectName,
+//                projectDescription,
+//                artifactId,
+//                groupId,
+//                dataSourceUrl,
+//                dataSourceUsername,
+//                dataSourcePassword,
+//                contextPath,
+//                portNumber,
+//                jwtKey,
+//                jwtExpiration,
+//                validationEnabled,
+//                frontProjectPath,
+//                farsiNames,
+//                farsiFields,
+//                entityLabels, null);
+//
+//
+//    }
 
-
-        String dataSourceUrl = InitializrReaderUtility.getResourceProperity("datasource.url");
-        String dataSourceUsername = InitializrReaderUtility.getResourceProperity("datasource.username");
-        String dataSourcePassword = InitializrReaderUtility.getResourceProperity("datasource.password");
-        String contextPath = InitializrReaderUtility.getResourceProperity("context.path");
-        String portNumber = InitializrReaderUtility.getResourceProperity("port.number");
-        String basePackage = InitializrReaderUtility.getResourceProperity("base.package");
-        String targetPath = InitializrReaderUtility.getResourceProperity("target.path");
-        String projectName = InitializrReaderUtility.getResourceProperity("project.name");
-        String projectDescription = InitializrReaderUtility.getResourceProperity("project.description");
-        String artifactId = InitializrReaderUtility.getResourceProperity("maven.artifact.id");
-        String groupId = InitializrReaderUtility.getResourceProperity("maven.group.id");
-        String jwtKey = InitializrReaderUtility.getResourceProperity("jwt.key");
-        String jwtExpiration = InitializrReaderUtility.getResourceProperity("jwt.expiration");
-        boolean validationEnabled = Boolean.parseBoolean(InitializrReaderUtility.getResourceProperity("validation.enabled"));
-
-        String frontProjectName = InitializrReaderUtility.getResourceProperity("front.project.name");
-        String frontProjectPath = InitializrReaderUtility.getResourceProperity("front.target.path");
-        String frontProjectFarsiPath = InitializrReaderUtility.getResourceProperity("front.project.farsi.name");
-
-        List<String> entities = findEntities();
-        LinkedHashMap<String, String> farsiNames = findEntitiesFarsiNames();
-        LinkedHashMap<String, String> entityLabels = findEntitiesLabels();
-        LinkedHashMap<String, LinkedHashMap<String, String>> farsiFields = findFieldsFarsiNames();
-
-
-        FrontGenerator frontGenerator = new FrontGenerator();
-        frontGenerator.generateStructureOfProject(frontProjectName, frontProjectPath);
-
-        generateAll(basePackage,
-                entities,
-                targetPath,
-                projectName,
-                projectDescription,
-                artifactId,
-                groupId,
-                dataSourceUrl,
-                dataSourceUsername,
-                dataSourcePassword,
-                contextPath,
-                portNumber,
-                jwtKey,
-                jwtExpiration,
-                validationEnabled,
-                frontProjectPath,
-                farsiNames,
-                farsiFields,
-                entityLabels, null);
-
-
-    }
-
+    @Transactional
     public void generateFromJson(SystemDefinition systemDefinition) throws IOException {
 
         List<GlobalizedName> entityNameList = systemDefinition.getBackendDefinition().getEntityDefinitionList().stream().map(EntityDefinition::getName).collect(Collectors.toList());
@@ -95,7 +101,7 @@ public class NicicoGenerator {
         FrontGenerator frontGenerator = new FrontGenerator();
         frontGenerator.generateStructureOfProject(systemDefinition.getFrontendDefinition().getProjectName(), systemDefinition.getFrontendDefinition().getTargetPath());
 
-        NicicoGenerator.generateAll(systemDefinition.getBackendDefinition().getBasePackage(),
+        generateAll(systemDefinition.getBackendDefinition().getBasePackage(),
                 engNames,
                 systemDefinition.getBackendDefinition().getTargetPath(),
                 systemDefinition.getBackendDefinition().getMavenConfig().getProjectName(),
@@ -116,7 +122,8 @@ public class NicicoGenerator {
                 entityLabels, systemDefinition);
     }
 
-    public static void generateAll(String basePackage,
+    @Transactional
+    public void generateAll(String basePackage,
                                    List<String> entityNameList,
                                    String targetPath,
                                    String projectName,
@@ -164,8 +171,11 @@ public class NicicoGenerator {
 
 
         if (systemDefinition.getGenerateBackend() == null || systemDefinition.getGenerateBackend()) {
+
+            createDatabase(systemDefinition.getBackendDefinition().getDatabaseConnection());
+
             if (checkGeneration("generate.pom")) {
-                generatePOMFile(rootPath.getPath(), projectName, projectDescription, artifcatId, groupId);
+                generatePOMFile(rootPath.getPath(), projectName, projectDescription, artifcatId, groupId, systemDefinition.getBackendDefinition().getDatabaseConnection());
             }
 
             if (checkGeneration("generate.runner")) {
@@ -282,6 +292,24 @@ public class NicicoGenerator {
             FrontGenerator.generateProxyConf(frontProjectPath, contextPath, portNumber);
             FrontGenerator.generateEnvironment(frontProjectPath, contextPath);
             FrontGenerator.generateProductionEnvironment(frontProjectPath, contextPath);
+        }
+    }
+
+    @PersistenceContext
+    private EntityManager em;
+
+    @Transactional
+    public void createDatabase(DatabaseConnection databaseConnection) {
+        try {
+            if (databaseConnection.getDatasourceUrl().contains("mysql")) {
+                em.createNativeQuery("create schema " + databaseConnection.getSchemaName()).executeUpdate();
+
+            } else if (databaseConnection.getDatasourceUrl().contains("oracle")) {
+                em.createNativeQuery("CREATE USER " + databaseConnection.getDatasourceUsername() + " IDENTIFIED BY " + databaseConnection.getDatasourcePassword()).executeUpdate();
+                em.createNativeQuery("GRANT CONNECT, RESOURCE, DBA TO " + databaseConnection.getDatasourceUsername()).executeUpdate();
+            }
+        } catch (Exception e) {
+            System.err.println(e.getMessage());
         }
     }
 
@@ -669,9 +697,10 @@ public class NicicoGenerator {
 
     }
 
-    private static String generatePOMFile(String path, String projectName, String projectDescription, String artifactId, String groupId) throws FileNotFoundException {
+    private static String generatePOMFile(String path, String projectName, String projectDescription, String artifactId, String groupId,
+                                          DatabaseConnection databaseConnection) throws FileNotFoundException {
 
-        String content = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+        StringBuilder content = new StringBuilder("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
                 "<project xmlns=\"http://maven.apache.org/POM/4.0.0\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n" +
                 "         xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd\">\n" +
                 "    <modelVersion>4.0.0</modelVersion>\n" +
@@ -742,13 +771,15 @@ public class NicicoGenerator {
                 "            <groupId>com.adldoost</groupId>\n" +
                 "            <artifactId>aef3-data</artifactId>\n" +
                 "            <version>1.2-SNAPSHOT</version>\n" +
-                "        </dependency>\n" +
-                "        <dependency>\n" +
-                "           <groupId>mysql</groupId>\n" +
-                "           <artifactId>mysql-connector-java</artifactId>\n" +
-                "           <version>8.0.13</version>\n" +
-                "        </dependency>" +
-                "\n" +
+                "        </dependency>\n");
+        if (databaseConnection.getDatasourceUrl().contains("mysql")) {
+            content.append("        <dependency>\n" +
+                    "           <groupId>mysql</groupId>\n" +
+                    "           <artifactId>mysql-connector-java</artifactId>\n" +
+                    "           <version>8.0.13</version>\n" +
+                    "        </dependency>");
+        }
+        content.append("\n" +
                 "        <dependency>\n" +
                 "            <groupId>io.jsonwebtoken</groupId>\n" +
                 "            <artifactId>jjwt</artifactId>\n" +
@@ -791,9 +822,9 @@ public class NicicoGenerator {
                 "        </profile>\n" +
                 "    </profiles>" +
                 "\n" +
-                "</project>";
+                "</project>");
 
-        String result = content.replaceAll("#groupId", groupId)
+        String result = content.toString().replaceAll("#groupId", groupId)
                 .replaceAll("#artifactId", artifactId)
                 .replaceAll("#projectName", projectName)
                 .replaceAll("#projectDescription", projectDescription);
@@ -2935,11 +2966,15 @@ public class NicicoGenerator {
         StringBuilder content = new StringBuilder("spring.datasource.url=" + datasourceUrl + "\n" +
                 "spring.datasource.username=" + dataSourceUserName + "\n" +
                 "spring.datasource.password=" + dataSourcePassword + "\n" +
-                "spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver\n" +
-                "spring.jpa.hibernate.ddl-auto=update\n" +
-                "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL5InnoDBDialect\n" +
-                "spring.jpa.properties.hibernate.dialect.storage_engine=innodb\n" +
-                "\n" +
+                "spring.jpa.hibernate.ddl-auto=update\n");
+        if (datasourceUrl.contains("mysql")) {
+            content.append("spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver\n" +
+                    "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL5InnoDBDialect\n" +
+                    "spring.jpa.properties.hibernate.dialect.storage_engine=innodb\n");
+        } else if (datasourceUrl.contains("oracle")) {
+            content.append("spring.datasource.driver-class-name=oracle.jdbc.driver.OracleDriver\n");
+        }
+        content.append("\n" +
                 "server.servlet.context-path=/" + contextPath + "\n" +
                 "server.port=" + portNumber + "\n" +
                 "\n" +

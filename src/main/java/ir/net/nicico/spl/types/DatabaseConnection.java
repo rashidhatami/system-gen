@@ -10,6 +10,7 @@ public class DatabaseConnection implements Serializable {
     private String datasourceUrl;
     private String datasourceUsername;
     private String datasourcePassword;
+    private String schemaName;
 
     public String getDatasourceUrl() {
         return datasourceUrl;
@@ -33,5 +34,13 @@ public class DatabaseConnection implements Serializable {
 
     public void setDatasourcePassword(String datasourcePassword) {
         this.datasourcePassword = datasourcePassword;
+    }
+
+    public String getSchemaName() {
+        return schemaName;
+    }
+
+    public void setSchemaName(String schemaName) {
+        this.schemaName = schemaName;
     }
 }

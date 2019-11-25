@@ -2,6 +2,7 @@ package ir.net.nicico.spl.rest;
 
 import ir.net.nicico.spl.NicicoGenerator;
 import ir.net.nicico.spl.types.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -9,8 +10,15 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 @RestController
-@RequestMapping("/generate")
+@RequestMapping("/public/generate")
 public class GeneratorRestService {
+
+    final NicicoGenerator nicicoGenerator;
+
+    @Autowired
+    public GeneratorRestService(NicicoGenerator nicicoGenerator) {
+        this.nicicoGenerator = nicicoGenerator;
+    }
 
     @GetMapping("/pure-structure-json")
     public SystemDefinition createPureStructureJson() {
@@ -40,7 +48,7 @@ public class GeneratorRestService {
 
     @PostMapping("/")
     public void generateFromJson(@RequestBody SystemDefinition systemDefinition) throws IOException {
-        NicicoGenerator nicicoGenerator = new NicicoGenerator();
+//        NicicoGenerator nicicoGenerator = new NicicoGenerator();
         nicicoGenerator.generateFromJson(systemDefinition);
     }
 }
