@@ -2,7 +2,12 @@ package ir.net.nicico.spl;
 
 
 import com.google.common.base.CaseFormat;
+import com.google.gson.Gson;
+import com.google.gson.JsonParser;
+import ir.net.nicico.spl.dto.ProjectDto;
+import ir.net.nicico.spl.service.ProjectService;
 import ir.net.nicico.spl.types.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.persistence.EntityManager;
@@ -70,8 +75,25 @@ public class NicicoGenerator {
 //
 //    }
 
+    private final ProjectService projectService;
+
+    @Autowired
+    public NicicoGenerator(ProjectService projectService) {
+        this.projectService = projectService;
+    }
+
     @Transactional
     public void generateFromJson(SystemDefinition systemDefinition) throws IOException {
+
+        ProjectDto projectDto = new ProjectDto();
+        projectDto.setBackendGenerationPath(systemDefinition.getBackendDefinition().getTargetPath());
+        projectDto.setFrontendGenerationPath(systemDefinition.getFrontendDefinition().getTargetPath());
+        projectDto.setGenerationDate(new Date());
+        Gson gson = new Gson();
+        String json = gson.toJson(systemDefinition);
+        projectDto.setJonMessage(json);
+        projectDto.setName(systemDefinition.getFrontendDefinition().getProjectFarsiName());
+        projectDto = projectService.save(projectDto);
 
         List<GlobalizedName> entityNameList = systemDefinition.getBackendDefinition().getEntityDefinitionList().stream().map(EntityDefinition::getName).collect(Collectors.toList());
         List<Map<String, String>> namesMap = entityNameList.stream().map(GlobalizedName::getNames).collect(Collectors.toList());
@@ -124,25 +146,25 @@ public class NicicoGenerator {
 
     @Transactional
     public void generateAll(String basePackage,
-                                   List<String> entityNameList,
-                                   String targetPath,
-                                   String projectName,
-                                   String projectDescription,
-                                   String artifcatId,
-                                   String groupId,
-                                   String dataSourceUrl,
-                                   String dataSourceUsername,
-                                   String dataSourcePassword,
-                                   String contextPath,
-                                   String portNumber,
-                                   String jwtKey,
-                                   String jwtExpiration,
-                                   boolean validationEnabled,
-                                   String frontProjectPath,
-                                   LinkedHashMap<String, String> farsiNames,
-                                   LinkedHashMap<String, LinkedHashMap<String, String>> farsiFields,
-                                   LinkedHashMap<String, String> entityLabels,
-                                   SystemDefinition systemDefinition) throws IOException {
+                            List<String> entityNameList,
+                            String targetPath,
+                            String projectName,
+                            String projectDescription,
+                            String artifcatId,
+                            String groupId,
+                            String dataSourceUrl,
+                            String dataSourceUsername,
+                            String dataSourcePassword,
+                            String contextPath,
+                            String portNumber,
+                            String jwtKey,
+                            String jwtExpiration,
+                            boolean validationEnabled,
+                            String frontProjectPath,
+                            LinkedHashMap<String, String> farsiNames,
+                            LinkedHashMap<String, LinkedHashMap<String, String>> farsiFields,
+                            LinkedHashMap<String, String> entityLabels,
+                            SystemDefinition systemDefinition) throws IOException {
 
 
         generateStructureOfProject(projectName, basePackage, targetPath);
@@ -209,10 +231,10 @@ public class NicicoGenerator {
                 String entityFarsiName = entity.getName().getNames().get("fa");
                 try {
                     if (checkGeneration("generate.entity")) {
-                        generateEntity(basePackage, entityEnglishName, entity.getEntityFieldDefinitionList(), modelPath.getPath());
+                        generateEntity(basePackage, entityEnglishName, entity.getEntityFieldDefinitionList(), modelPath.getPath(), entityNameList);
                     }
                     if (checkGeneration("generate.dto")) {
-                        generateDto(basePackage, entityEnglishName, entity.getEntityFieldDefinitionList(), dtoPath.getPath(), validationEnabled);
+                        generateDto(basePackage, entityEnglishName, entity.getEntityFieldDefinitionList(), dtoPath.getPath(), validationEnabled, entityNameList);
                     }
                     if (checkGeneration("generate.dao")) {
                         generateDao(basePackage, entityEnglishName, daoPath.getPath());
@@ -523,20 +545,20 @@ public class NicicoGenerator {
                 "\n";
 
         for (String e : entities) {
-            content += "    public static final String ROLE_FIND_" + camelToSnake(e).toUpperCase() + " = \"ROLE_FIND_" + camelToSnake(e).toUpperCase() + "\";\n";
-            content += "    public static final String ROLE_SEARCH_" + camelToSnake(e).toUpperCase() + " = \"ROLE_SEARCH_" + camelToSnake(e).toUpperCase() + "\";\n";
-            content += "    public static final String ROLE_SAVE_" + camelToSnake(e).toUpperCase() + " = \"ROLE_SAVE_" + camelToSnake(e).toUpperCase() + "\";\n";
-            content += "    public static final String ROLE_REMOVE_" + camelToSnake(e).toUpperCase() + " = \"ROLE_REMOVE_" + camelToSnake(e).toUpperCase() + "\";\n";
+            content += "    public static final String AUTHORITY_FIND_" + camelToSnake(e).toUpperCase() + " = \"AUTHORITY_FIND_" + camelToSnake(e).toUpperCase() + "\";\n";
+            content += "    public static final String AUTHORITY_SEARCH_" + camelToSnake(e).toUpperCase() + " = \"AUTHORITY_SEARCH_" + camelToSnake(e).toUpperCase() + "\";\n";
+            content += "    public static final String AUTHORITY_SAVE_" + camelToSnake(e).toUpperCase() + " = \"AUTHORITY_SAVE_" + camelToSnake(e).toUpperCase() + "\";\n";
+            content += "    public static final String AUTHORITY_REMOVE_" + camelToSnake(e).toUpperCase() + " = \"AUTHORITY_REMOVE_" + camelToSnake(e).toUpperCase() + "\";\n";
         }
 
         content += "\n\n";
         content += "    public static List<String> getAllRoles() {\n";
         content += "        List<String> roles = new ArrayList<>();\n";
         for (String e : entities) {
-            content += "        roles.add(ROLE_FIND_" + camelToSnake(e).toUpperCase() + ");\n";
-            content += "        roles.add(ROLE_SEARCH_" + camelToSnake(e).toUpperCase() + ");\n";
-            content += "        roles.add(ROLE_SAVE_" + camelToSnake(e).toUpperCase() + ");\n";
-            content += "        roles.add(ROLE_REMOVE_" + camelToSnake(e).toUpperCase() + ");\n";
+            content += "        roles.add(AUTHORITY_FIND_" + camelToSnake(e).toUpperCase() + ");\n";
+            content += "        roles.add(AUTHORITY_SEARCH_" + camelToSnake(e).toUpperCase() + ");\n";
+            content += "        roles.add(AUTHORITY_SAVE_" + camelToSnake(e).toUpperCase() + ");\n";
+            content += "        roles.add(AUTHORITY_REMOVE_" + camelToSnake(e).toUpperCase() + ");\n";
         }
         content += "    return roles;";
         content += "    }\n";
@@ -585,78 +607,78 @@ public class NicicoGenerator {
         return fields;
     }
 
-    private static List<String> findEntities() {
-        Enumeration<String> keys = InitializrReaderUtility.getResourceKeys();
-        List<String> keyList = Collections.list(keys);
+//    private static List<String> findEntities() {
+//        Enumeration<String> keys = InitializrReaderUtility.getResourceKeys();
+//        List<String> keyList = Collections.list(keys);
+//
+//        List<String> entities = new ArrayList<>();
+//
+//        keyList.stream().forEach(k -> {
+//            if (k.contains("entity.name.")) {
+//                String[] parts = k.split("\\.");
+//                String type = InitializrReaderUtility.getResourceProperity(k);
+//                entities.add(parts[2]);
+//            }
+//        });
+//        return entities;
+//    }
 
-        List<String> entities = new ArrayList<>();
+//    private static LinkedHashMap<String, String> findEntitiesFarsiNames() {
+//        Enumeration<String> keys = InitializrReaderUtility.getResourceKeys();
+//        List<String> keyList = Collections.list(keys);
+//
+//        LinkedHashMap<String, String> entities = new LinkedHashMap<>();
+//
+//        keyList.stream().forEach(k -> {
+//            if (k.contains("entity.farsi.name.")) {
+//                String[] parts = k.split("\\.");
+//                String farsi = InitializrReaderUtility.getResourceProperity(k);
+//                entities.put(parts[3], farsi);
+//            }
+//        });
+//        return entities;
+//    }
 
-        keyList.stream().forEach(k -> {
-            if (k.contains("entity.name.")) {
-                String[] parts = k.split("\\.");
-                String type = InitializrReaderUtility.getResourceProperity(k);
-                entities.add(parts[2]);
-            }
-        });
-        return entities;
-    }
+//    private static LinkedHashMap<String, String> findEntitiesLabels() {
+//        Enumeration<String> keys = InitializrReaderUtility.getResourceKeys();
+//        List<String> keyList = Collections.list(keys);
+//
+//        LinkedHashMap<String, String> entities = new LinkedHashMap<>();
+//
+//        keyList.stream().forEach(k -> {
+//            if (k.contains("entity.label.")) {
+//                String[] parts = k.split("\\.");
+//                String label = InitializrReaderUtility.getResourceProperity(k);
+//                entities.put(parts[2], label);
+//            }
+//        });
+//        return entities;
+//    }
 
-    private static LinkedHashMap<String, String> findEntitiesFarsiNames() {
-        Enumeration<String> keys = InitializrReaderUtility.getResourceKeys();
-        List<String> keyList = Collections.list(keys);
-
-        LinkedHashMap<String, String> entities = new LinkedHashMap<>();
-
-        keyList.stream().forEach(k -> {
-            if (k.contains("entity.farsi.name.")) {
-                String[] parts = k.split("\\.");
-                String farsi = InitializrReaderUtility.getResourceProperity(k);
-                entities.put(parts[3], farsi);
-            }
-        });
-        return entities;
-    }
-
-    private static LinkedHashMap<String, String> findEntitiesLabels() {
-        Enumeration<String> keys = InitializrReaderUtility.getResourceKeys();
-        List<String> keyList = Collections.list(keys);
-
-        LinkedHashMap<String, String> entities = new LinkedHashMap<>();
-
-        keyList.stream().forEach(k -> {
-            if (k.contains("entity.label.")) {
-                String[] parts = k.split("\\.");
-                String label = InitializrReaderUtility.getResourceProperity(k);
-                entities.put(parts[2], label);
-            }
-        });
-        return entities;
-    }
-
-    private static LinkedHashMap<String, LinkedHashMap<String, String>> findFieldsFarsiNames() {
-
-        List<String> entites = findEntities();
-        LinkedHashMap<String, LinkedHashMap<String, String>> result = new LinkedHashMap<>();
-
-        entites.forEach(e -> {
-            Enumeration<String> keys = InitializrReaderUtility.getResourceKeys();
-            List<String> keyList = Collections.list(keys);
-
-            LinkedHashMap<String, String> fields = new LinkedHashMap<>();
-
-            keyList.stream().forEach(k -> {
-                if (k.contains(e + ".field.farsi.")) {
-                    String[] parts = k.split("\\.");
-                    String farsi = InitializrReaderUtility.getResourceProperity(k);
-                    fields.put(parts[3], farsi);
-                }
-            });
-            result.put(e, fields);
-        });
-
-
-        return result;
-    }
+//    private static LinkedHashMap<String, LinkedHashMap<String, String>> findFieldsFarsiNames() {
+//
+//        List<String> entites = findEntities();
+//        LinkedHashMap<String, LinkedHashMap<String, String>> result = new LinkedHashMap<>();
+//
+//        entites.forEach(e -> {
+//            Enumeration<String> keys = InitializrReaderUtility.getResourceKeys();
+//            List<String> keyList = Collections.list(keys);
+//
+//            LinkedHashMap<String, String> fields = new LinkedHashMap<>();
+//
+//            keyList.stream().forEach(k -> {
+//                if (k.contains(e + ".field.farsi.")) {
+//                    String[] parts = k.split("\\.");
+//                    String farsi = InitializrReaderUtility.getResourceProperity(k);
+//                    fields.put(parts[3], farsi);
+//                }
+//            });
+//            result.put(e, fields);
+//        });
+//
+//
+//        return result;
+//    }
 
     private static String generateSourceTargetPackagePath(String targetPath, String basePackage, String projectName) {
         String rootPath = targetPath + "/" + projectName;
@@ -840,7 +862,7 @@ public class NicicoGenerator {
         return result;
     }
 
-    public static String generateEntity(String basePackage, String entityName, List<EntityFieldDefinition> entityFieldDefinitionList, String targetPath) throws FileNotFoundException {
+    public static String generateEntity(String basePackage, String entityName, List<EntityFieldDefinition> entityFieldDefinitionList, String targetPath, List<String> entityNames) throws FileNotFoundException {
         StringBuilder content = new StringBuilder("package #package.model;\n" +
                 "\n" +
                 "import com.aef3.data.api.DomainEntity;\n" +
@@ -869,52 +891,48 @@ public class NicicoGenerator {
                         .append("    @GeneratedValue(strategy = GenerationType.IDENTITY)\n")
                         .append("    private ").append(fieldType).append(" ").append(fieldEnglishName).append(";")
                         .append("\n");
-            } else {
-                if (fieldType.toLowerCase().contains(ComponentTypes.DROP_DOWN.getValue().toLowerCase())) {
-                    content.append("    @Column(name = \"").append(camelToSnake(fieldEnglishName)).append("\"");
-                    if (!field.getNullable()) {
-                        content.append(", nullable = " + false);
-                    }
-
-                    if (field.getLength() != null) {
-                        String length = field.getLength() + "";
-                        content.append(", length = ").append(length);
-                    }
-                    content.append(")\n");
-                    content.append("    private Long").append(" ").append(fieldEnglishName).append(";\n");
-                } else if (fieldType.toLowerCase().contains(ComponentTypes.RADIO_BUTTON.getValue().toLowerCase())) {
-                    content.append("    @Column(name = \"").append(camelToSnake(fieldEnglishName)).append("\"");
-                    if (!field.getNullable()) {
-                        content.append(", nullable = " + false);
-                    }
-
-                    if (field.getLength() != null) {
-                        String length = field.getLength() + "";
-                        content.append(", length = ").append(length);
-                    }
-                    content.append(")\n");
-                    content.append("    private Long").append(" ").append(fieldEnglishName).append(";\n");
-                } else {
-                    if (getBaseTypes().contains(fieldType)) {
-                        content.append("    @Column(name = \"").append(camelToSnake(fieldEnglishName)).append("\"");
-                        if (!field.getNullable()) {
-                            content.append(", nullable = " + false);
-                        }
-                        if (field.getLength() != null) {
-                            String length = field.getLength() + "";
-                            content.append(", length = ").append(length);
-                        }
-                        content.append(")\n");
-                        if (fieldType.equals("Date")) {
-                            content.append("    @Temporal(TemporalType.TIMESTAMP)\n");
-                        }
-                    } else {
-                        content.append("    @JoinColumn(name = \"").append(camelToSnake(fieldEnglishName)).append("\", referencedColumnName = \"id\")\n")
-                                .append("    @ManyToOne\n");
-                    }
-                    content.append("    private ").append(fieldType).append(" ").append(fieldEnglishName).append(";\n");
+            } else if (fieldType.toLowerCase().contains(ComponentTypes.DROP_DOWN.getValue().toLowerCase())) {
+                content.append("    @Column(name = \"").append(camelToSnake(fieldEnglishName)).append("\"");
+                if (!field.getNullable()) {
+                    content.append(", nullable = " + false);
                 }
 
+                if (field.getLength() != null) {
+                    String length = field.getLength() + "";
+                    content.append(", length = ").append(length);
+                }
+                content.append(")\n");
+                content.append("    private Long").append(" ").append(fieldEnglishName).append(";\n");
+            } else if (fieldType.toLowerCase().contains(ComponentTypes.RADIO_BUTTON.getValue().toLowerCase())) {
+                content.append("    @Column(name = \"").append(camelToSnake(fieldEnglishName)).append("\"");
+                if (!field.getNullable()) {
+                    content.append(", nullable = " + false);
+                }
+
+                if (field.getLength() != null) {
+                    String length = field.getLength() + "";
+                    content.append(", length = ").append(length);
+                }
+                content.append(")\n");
+                content.append("    private Long").append(" ").append(fieldEnglishName).append(";\n");
+            } else if (getBaseTypes().contains(fieldType)) {
+                content.append("    @Column(name = \"").append(camelToSnake(fieldEnglishName)).append("\"");
+                if (!field.getNullable()) {
+                    content.append(", nullable = " + false);
+                }
+                if (field.getLength() != null) {
+                    String length = field.getLength() + "";
+                    content.append(", length = ").append(length);
+                }
+                content.append(")\n");
+                if (fieldType.equals("Date")) {
+                    content.append("    @Temporal(TemporalType.TIMESTAMP)\n");
+                }
+                content.append("    private ").append(fieldType).append(" ").append(fieldEnglishName).append(";\n");
+            } else if (entityNames.contains(fieldType)) {
+                content.append("    @JoinColumn(name = \"").append(camelToSnake(fieldEnglishName)).append("\", referencedColumnName = \"id\")\n")
+                        .append("    @ManyToOne\n");
+                content.append("    private ").append(fieldType).append(" ").append(fieldEnglishName).append(";\n");
             }
         });
 
@@ -1110,10 +1128,13 @@ public class NicicoGenerator {
 
     }
 
-    private static String generateDto(String basePackage, String entityName, List<EntityFieldDefinition> entityFieldDefinitionList, String targetPath, boolean validationEnabled) throws FileNotFoundException {
+    private static String generateDto(String basePackage, String entityName,
+                                      List<EntityFieldDefinition> entityFieldDefinitionList,
+                                      String targetPath, boolean validationEnabled,
+                                      List<String> entityNames) throws FileNotFoundException {
         String result = generateDtoHeader();
-        result += generateDtoFields(entityFieldDefinitionList, validationEnabled, entityName);
-        result += generateDtoMappings(entityFieldDefinitionList, entityName);
+        result += generateDtoFields(entityFieldDefinitionList, validationEnabled, entityName, entityNames);
+        result += generateDtoMappings(entityFieldDefinitionList, entityName, entityNames);
         result += generateDtoOverrideMethods(entityName);
         result += generateFooter();
 
@@ -1151,7 +1172,7 @@ public class NicicoGenerator {
 
     }
 
-    private static String generateDtoFields(List<EntityFieldDefinition> entityFieldDefinitionList, boolean validationEnabled, String entityName) {
+    private static String generateDtoFields(List<EntityFieldDefinition> entityFieldDefinitionList, boolean validationEnabled, String entityName, List<String> entityNames) {
 
         StringBuilder content = new StringBuilder();
 
@@ -1176,8 +1197,10 @@ public class NicicoGenerator {
                 content.append("\n    private Long").append(" ").append(fieldEnglishName).append(";");
             } else if (fieldType.toLowerCase().contains(ComponentTypes.RADIO_BUTTON.getValue().toLowerCase())) {
                 content.append("\n    private Long").append(" ").append(fieldEnglishName).append(";");
-            } else {
+            } else if(entityNames.contains(fieldType)) {
                 content.append("\n    private ").append(fieldType + "Dto").append(" ").append(fieldEnglishName).append(";");
+            } else {
+                System.err.println("generateDtoFields : Unkown field type : " + fieldType);
             }
         });
 
@@ -1219,7 +1242,7 @@ public class NicicoGenerator {
                         "    }" +
                         "\n");
 
-            } else {
+            } else if(entityNames.contains(fieldType)) {
 
                 content.append("\n    public " + fieldType + "Dto" + " get" + upperCaseCharFieldName + "() {\n" +
                         "        return " + fieldEnglishName + ";\n" +
@@ -1229,6 +1252,8 @@ public class NicicoGenerator {
                         "        this." + fieldEnglishName + " = " + fieldEnglishName + ";\n" +
                         "    }" +
                         "\n");
+            } else {
+                System.err.println("generateDtoFields getter setter : Unkown field type : " + fieldType);
             }
 
         });
@@ -1237,7 +1262,7 @@ public class NicicoGenerator {
 
     }
 
-    private static String generateDtoMappings(List<EntityFieldDefinition> fieldDefinitionList, String entityName) {
+    private static String generateDtoMappings(List<EntityFieldDefinition> fieldDefinitionList, String entityName, List<String> entityNames) {
 
         String firstChar = entityName.substring(0, 1);
         String entityInstanceName = entityName.replaceFirst(firstChar, firstChar.toLowerCase());
@@ -1267,12 +1292,14 @@ public class NicicoGenerator {
                 content.append("\n        dto.set").append(upperCaseCharFieldName).append("(").append(entityInstanceName).append(".get").append(upperCaseCharFieldName).append("()").append(");");
             } else if (getBaseTypes().contains(fieldType)) {
                 content.append("\n        dto.set").append(upperCaseCharFieldName).append("(").append(entityInstanceName).append(".get").append(upperCaseCharFieldName).append("()").append(");");
-            } else {
+            } else if(entityNames.contains(fieldType)) {
                 content.append("\n        dto.set").append(upperCaseCharFieldName).append("(")
                         .append(fieldType).append("Dto.toDto(")
                         .append(entityInstanceName).append(".get").append(upperCaseCharFieldName).append("()")
                         .append(")")
                         .append(");");
+            } else {
+                System.err.println("generateDtoMappings getter setter : Unkown field type : " + fieldType);
             }
         });
 
@@ -1300,12 +1327,14 @@ public class NicicoGenerator {
                 content.append("\n        #entity.set").append(upperCaseCharFieldName).append("(").append("dto").append(".get").append(upperCaseCharFieldName).append("()").append(");");
             } else if (fieldType.toLowerCase().contains(ComponentTypes.RADIO_BUTTON.getValue().toLowerCase())) {
                 content.append("\n        #entity.set").append(upperCaseCharFieldName).append("(").append("dto").append(".get").append(upperCaseCharFieldName).append("()").append(");");
-            } else {
+            } else if(entityNames.contains(fieldType)) {
                 content.append("\n        #entity.set").append(upperCaseCharFieldName).append("(")
                         .append(fieldType).append("Dto.toEntity(")
                         .append("dto").append(".get").append(upperCaseCharFieldName).append("()")
                         .append(")")
                         .append(");");
+            } else {
+                System.err.println("generateDtoMappings converters: Unkown field type : " + fieldType);
             }
         });
 
@@ -1375,6 +1404,7 @@ public class NicicoGenerator {
 
         if (checkGeneration("generate.security.roles")) {
             content += "import org.springframework.security.access.annotation.Secured;\n";
+            content += "import org.springframework.security.access.prepost.PreAuthorize;\n";
             content += "import #package.security.AccessRoles;\n";
 
         }
@@ -1404,7 +1434,7 @@ public class NicicoGenerator {
         StringBuilder content = new StringBuilder(
                 "\n\n");
         if (checkGeneration("generate.security.roles")) {
-            content.append("    @Secured(AccessRoles.ROLE_FIND_").append(camelToSnake(entity).toUpperCase()).append(")\n");
+            content.append("    @PreAuthorize(\"hasAuthority('AUTHORITY_FIND_").append(camelToSnake(entity).toUpperCase()).append("')\")\n");
         }
         content.append("    @GetMapping(\"/{id}\")\n" +
                 "    public #EntityDto findById(@PathVariable(name = \"id\")Long id) {\n" +
@@ -1412,7 +1442,7 @@ public class NicicoGenerator {
                 "    }\n" +
                 "\n");
         if (checkGeneration("generate.security.roles")) {
-            content.append("    @Secured(AccessRoles.ROLE_SEARCH_").append(camelToSnake(entity).toUpperCase()).append(")\n");
+            content.append("     @PreAuthorize(\"hasAuthority('AUTHORITY_SEARCH_").append(camelToSnake(entity).toUpperCase()).append("')\")\n");
         }
         content.append("    @GetMapping(\"/search\")\n" +
                 "    public PagedResult search(");
@@ -1491,7 +1521,7 @@ public class NicicoGenerator {
     private static String generateRestPostAndRemove(String entity) {
         StringBuilder content = new StringBuilder("\n");
         if (checkGeneration("generate.security.roles")) {
-            content.append("    @Secured(AccessRoles.ROLE_SAVE_").append(camelToSnake(entity).toUpperCase()).append(")\n");
+            content.append("    @PreAuthorize(\"hasAuthority('AUTHORITY_SAVE_").append(camelToSnake(entity).toUpperCase()).append("')\")\n");
         }
         content.append("    @PostMapping(path = \"/save\")\n" +
                 "    public #EntityDto save(@RequestBody #EntityDto #entity) {\n" +
@@ -1499,7 +1529,7 @@ public class NicicoGenerator {
                 "    }\n" +
                 "\n");
         if (checkGeneration("generate.security.roles")) {
-            content.append("\n    @Secured(AccessRoles.ROLE_REMOVE_").append(camelToSnake(entity).toUpperCase()).append(")\n");
+            content.append("\n    @PreAuthorize(\"hasAuthority('AUTHORITY_REMOVE_").append(camelToSnake(entity).toUpperCase()).append("')\")\n");
         }
         content.append("    @DeleteMapping(path = \"/delete/{id}\")\n" +
                 "    public void remove(@PathVariable(name = \"id\")Long id) {\n" +
