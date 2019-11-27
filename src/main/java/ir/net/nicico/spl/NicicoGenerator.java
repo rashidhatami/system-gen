@@ -8,6 +8,7 @@ import ir.net.nicico.spl.dto.ProjectDto;
 import ir.net.nicico.spl.service.ProjectService;
 import ir.net.nicico.spl.types.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Service;
 
 import javax.persistence.EntityManager;
@@ -223,6 +224,7 @@ public class NicicoGenerator {
 
             if (checkGeneration("generate.security.roles")) {
                 generateAccessRoles(basePackage, securityPath.getPath(), entityNameList);
+                generateOauthPermissionFile(resourcePath.getPath(), entityNameList);
             }
 
 
@@ -327,8 +329,8 @@ public class NicicoGenerator {
                 em.createNativeQuery("create schema " + databaseConnection.getSchemaName()).executeUpdate();
 
             } else if (databaseConnection.getDatasourceUrl().contains("oracle")) {
-                em.createNativeQuery("CREATE USER " + databaseConnection.getDatasourceUsername() + " IDENTIFIED BY " + databaseConnection.getDatasourcePassword()).executeUpdate();
-                em.createNativeQuery("GRANT CONNECT, RESOURCE, DBA TO " + databaseConnection.getDatasourceUsername()).executeUpdate();
+                em.createNativeQuery("CREATE USER \"" + databaseConnection.getDatasourceUsername() + "\" IDENTIFIED BY \"" + databaseConnection.getDatasourcePassword() + "\"").executeUpdate();
+                em.createNativeQuery("GRANT CONNECT, RESOURCE, DBA TO \"" + databaseConnection.getDatasourceUsername() + "\"").executeUpdate();
             }
         } catch (Exception e) {
             System.err.println(e.getMessage());
@@ -576,6 +578,48 @@ public class NicicoGenerator {
         }
         return result;
 
+    }
+
+    private String generateOauthPermissionFile(String path, List<String> entities) throws FileNotFoundException {
+        if (entities == null || entities.isEmpty())
+            return null;
+
+        List list = new ArrayList<OAuthPermission>();
+        entities.forEach(e -> {
+            OAuthPermission oAuthPermission = new OAuthPermission();
+            oAuthPermission.setCode("AUTHORITY_FIND_" + camelToSnake(e).toUpperCase());
+            oAuthPermission.setTitle("AUTHORITY_FIND_" + camelToSnake(e).toUpperCase());
+            list.add(oAuthPermission);
+
+            oAuthPermission = new OAuthPermission();
+            oAuthPermission.setCode("AUTHORITY_SEARCH_" + camelToSnake(e).toUpperCase());
+            oAuthPermission.setTitle("AUTHORITY_SEARCH_" + camelToSnake(e).toUpperCase());
+            list.add(oAuthPermission);
+
+            oAuthPermission = new OAuthPermission();
+            oAuthPermission.setCode("AUTHORITY_SAVE_" + camelToSnake(e).toUpperCase());
+            oAuthPermission.setTitle("AUTHORITY_SAVE_" + camelToSnake(e).toUpperCase());
+            list.add(oAuthPermission);
+
+            oAuthPermission = new OAuthPermission();
+            oAuthPermission.setCode("AUTHORITY_REMOVE_" + camelToSnake(e).toUpperCase());
+            oAuthPermission.setTitle("AUTHORITY_REMOVE_" + camelToSnake(e).toUpperCase());
+            list.add(oAuthPermission);
+        });
+
+        OAuthPermissionWrapper wrapper = new OAuthPermissionWrapper();
+        wrapper.setList(list);
+        Gson gson = new Gson();
+        String json = gson.toJson(wrapper);
+        System.out.printf(json);
+
+        File file = new File(path);
+        file.mkdirs();
+
+        try (PrintStream out = new PrintStream(new FileOutputStream(path + "/permissions.json"))) {
+            out.print(json);
+        }
+        return json;
     }
 
     private static boolean checkGeneration(String key) {
